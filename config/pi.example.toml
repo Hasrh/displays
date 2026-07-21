@@ -1,0 +1,20 @@
+[application]
+log_level = "INFO"
+
+[host]
+url = "ws://192.168.1.10:8765"
+
+[display]
+# Controllers are identified; keep "auto" until the kernel overlay and device path are verified.
+backend = "auto"
+controller = "ili9486"
+width = 320
+height = 480
+orientation = 0
+target_fps = 25
+
+[touch]
+controller = "xpt2046"
+
+# Authentication and touch calibration are intentionally absent until their contracts,
+# wiring, device path, and calibration matrix are verified.

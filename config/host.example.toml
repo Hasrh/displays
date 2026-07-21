@@ -1,0 +1,10 @@
+[application]
+log_level = "INFO"
+
+[server]
+# Bind deliberately to the selected LAN interface in production, not 0.0.0.0.
+bind_host = "192.168.1.10"
+port = 8765
+
+# Authentication is intentionally absent. A future token must come from an environment
+# variable or a local ignored config file; never commit it here.
