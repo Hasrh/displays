@@ -2,9 +2,10 @@
 
 Desktop Companion Display is a host-authoritative companion screen: Windows will collect
 and process data, while a Raspberry Pi Zero WH will render cached state and forward input.
-This repository contains the approved project scaffolding, configuration parsers, protocol
-vocabulary, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer backend for
-hardware testing. Networking, pages, collectors, and command execution are not implemented.
+This repository contains the approved project scaffolding, configuration parsers, validated
+shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer
+backend for hardware testing. Networking, pages, collectors, and command execution are not
+implemented.
 
 ## Requirements
 

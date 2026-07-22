@@ -1,6 +1,8 @@
-# Protocol outline
+# Protocol contract
 
-This is the approved wire-contract outline, not an implemented codec or network service.
+The dependency-free codec and validators are implemented in `shared/protocol.py`; immutable
+domain models live in `shared/models.py`. Both endpoints use this exact code before dispatch.
+The WebSocket transport itself is the next milestone.
 
 ## JSON envelope
 
@@ -24,9 +26,10 @@ Every text message uses:
 - `sequence`: non-negative per-session ordering value.
 - `payload`: type-specific JSON object.
 
-Unknown optional fields are ignored. Required fields, enums, ranges, payload sizes, and
-message sizes will be validated before dispatch. Tokens are never included in normal
-messages or logs.
+Unknown optional fields are ignored. Required fields, enums, ranges, finite numeric values,
+payload shapes, and the 256 KiB JSON limit are validated before dispatch. Unsupported major
+versions are rejected; additive minor versions remain compatible. Authentication tokens are
+redacted from dataclass representations and must never be logged.
 
 ## Message families
 
@@ -42,12 +45,25 @@ messages or logs.
 - `error`: machine-readable code plus safe diagnostic text.
 - `asset_manifest`: current prepared assets and hashes.
 
+Concrete payload dataclasses include `HelloPayload`, `WelcomePayload`,
+`StateSnapshotPayload`, `StatePatchPayload`, `FFTFrame`, `CommandPayload`,
+`CommandResultPayload`, `PingPayload`, `ErrorPayload`, and `AssetManifestPayload`.
+Display state is composed from typed media, system, network, and weather models.
+
 ## Binary assets
 
-Album art will use a separately specified, versioned binary WebSocket frame containing a
-small metadata header and compressed display-ready WebP/JPEG bytes. Assets are hashed,
-sent only on change, bounded by size, and stored in a small Pi LRU cache. The exact binary
-header is intentionally deferred to the contract milestone.
+Album art uses a versioned binary WebSocket frame:
+
+1. Four-byte magic: `DDAS`
+2. One-byte frame version: `1`
+3. Four-byte big-endian JSON metadata-header length
+4. UTF-8 JSON `AssetMetadata`
+5. JPEG or WebP bytes
+
+The metadata contains `asset_id`, lowercase SHA-256, MIME type, and byte length. Encoding
+and decoding verify the declared length, 2 MiB limit, media type, frame version, and SHA-256
+using constant-time digest comparison. Assets are sent only on hash change and will be stored
+in a small Pi LRU cache.
 
 ## Cadence
 
