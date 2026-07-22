@@ -24,6 +24,8 @@ render, adjust local brightness, and forward controls.
 ## Runtime rules
 
 - A single long-lived WebSocket will carry JSON envelopes and versioned binary asset frames.
+  Its primary TCP transport is the direct USB Ethernet gadget link (`192.168.7.0/24`);
+  Wi-Fi is optional for development and recovery.
 - Latest-value semantics prevent telemetry and FFT backlogs; render work never waits on I/O.
 - Reconnect uses exponential backoff with jitter and begins with a full snapshot plus asset
   manifest.

@@ -45,6 +45,10 @@ The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480Ã
 and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`
 and `docs/deployment.md` before running the framebuffer test.
 
+The production data link is a direct USB cable: the Pi Zero runs as a USB Ethernet gadget at
+`192.168.7.2` and connects to the Windows host at `192.168.7.1`. This requires no Wi-Fi or
+router after one-time setup. Follow `docs/usb-direct.md`; do not edit boot files from memory.
+
 ## License
 
 Released under the MIT License. See `LICENSE`.

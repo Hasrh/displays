@@ -2,6 +2,10 @@
 
 Deployment is intentionally not active at this milestone.
 
+The intended production data path is the direct USB Ethernet gadget link documented in
+`docs/usb-direct.md`. Wi-Fi can remain available during development and recovery, but the
+application examples bind and connect through the isolated `192.168.7.0/24` USB link.
+
 ## Windows development host
 
 ```powershell
