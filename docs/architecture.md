@@ -54,6 +54,7 @@ render, adjust local brightness, and forward controls.
 7. Real Windows collectors.
 8. Album art, FFT, and on-device performance tuning.
 
-The ILI9486 display and XPT2046 touch controllers are identified. SPI wiring/chip selects,
-overlay, rotation, display device, input device, calibration, and throughput must still be
-verified before a concrete Pi backend is selected.
+The LCDWiki MPI3501 display path is verified: ILI9486 via fbtft, the
+`tft35a:rotate=90` overlay, and a 480×320 RGB565 framebuffer at `/dev/fb1`.
+Touch remains intentionally deferred. Sustained framebuffer throughput still needs
+measurement on the Pi Zero W before selecting the production frame rate.

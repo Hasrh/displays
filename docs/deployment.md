@@ -29,13 +29,26 @@ output is preferred; if entries show `unavailable`, rerun with `sudo` only to re
 inventory and review the script first. Do not enable SPI or apply an overlay merely to make
 the report look complete.
 
+## Verified framebuffer test
+
+The LCDWiki MPI3501 is exposed as `/dev/fb1` with 480×320 RGB565 geometry. Copy the example
+configuration and run the explicit hardware test:
+
+```console
+cp config/pi.example.toml config/pi.toml
+python3 -m pi.main --config config/pi.toml --display-test
+```
+
+This writes static RGB565 color bars and exits. The test does not configure SPI, load a
+driver, contact the Windows host, or access touch input. The user running it must belong to
+the `video` group or otherwise have write access to `/dev/fb1`.
+
 ## Future Pi service
 
-After controller and backend verification, deployment will use a dedicated unprivileged
-service account and a foreground `systemd` unit with restart backoff. Configuration and
-authentication material will live outside the source tree with restrictive permissions.
-The service will receive only the supplementary groups needed for the verified DRM,
-framebuffer, SPI, or input devices.
+Production deployment will use a dedicated unprivileged service account and a foreground
+`systemd` unit with restart backoff. Configuration and authentication material will live
+outside the source tree with restrictive permissions. The service will require the `video`
+group for the verified framebuffer; input permissions are unnecessary while touch is disabled.
 
 Production installation, service units, firewall rules, TLS/authentication, and dependencies
 are deferred until their implementation milestones. Never expose a future unauthenticated

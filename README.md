@@ -2,9 +2,9 @@
 
 Desktop Companion Display is a host-authoritative companion screen: Windows will collect
 and process data, while a Raspberry Pi Zero WH will render cached state and forward input.
-This repository currently contains only the approved project scaffolding, configuration
-parsers, protocol vocabulary, and a read-only Raspberry Pi hardware probe. Networking,
-collectors, rendering, and command execution are intentionally not implemented.
+This repository contains the approved project scaffolding, configuration parsers, protocol
+vocabulary, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer backend for
+hardware testing. Networking, pages, collectors, and command execution are not implemented.
 
 ## Requirements
 
@@ -37,13 +37,12 @@ outside source control (preferably through environment variables).
 
 `python -m pc.main --config config/host.toml` and
 `python -m pi.main --config config/pi.toml` validate configuration and then exit clearly
-because runtime features have not been implemented. They never start a listener or alter
-hardware.
+because runtime features have not been implemented. The Pi entry point writes to the
+configured framebuffer only when the explicit `--display-test` option is supplied.
 
-Run `python scripts/pi_hardware_probe.py` on the Raspberry Pi and share its output before
-selecting display or touch drivers. The ILI9486 LCD and XPT2046 touch controllers are
-identified, but wiring, kernel overlay, device paths, rotation, and calibration still require
-probe output and the board pinout. See `docs/hardware.md`.
+The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480×320 RGB565,
+and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`
+and `docs/deployment.md` before running the framebuffer test.
 
 ## License
 

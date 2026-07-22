@@ -3,7 +3,7 @@
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 
 class ConfigError(ValueError):
@@ -18,8 +18,10 @@ class PiConfig:
     orientation: int
     target_fps: int
     display_backend: str
+    framebuffer_device: Path
+    pixel_format: Literal["rgb565"]
     display_controller: str
-    touch_controller: str
+    touch_controller: str | None
     log_level: str
 
 
@@ -70,10 +72,17 @@ def load_config(path: Path) -> PiConfig:
     if display_controller not in {"ili9486"}:
         raise ConfigError("display.controller must be ili9486")
 
-    touch = _table(document.get("touch"), "touch")
-    touch_controller = _string(touch, "controller", "touch").lower()
-    if touch_controller not in {"xpt2046"}:
-        raise ConfigError("touch.controller must be xpt2046")
+    touch_value = document.get("touch")
+    touch_controller: str | None = None
+    if touch_value is not None:
+        touch = _table(touch_value, "touch")
+        touch_controller = _string(touch, "controller", "touch").lower()
+        if touch_controller not in {"xpt2046"}:
+            raise ConfigError("touch.controller must be xpt2046")
+
+    pixel_format = _string(display, "pixel_format", "display").lower()
+    if pixel_format != "rgb565":
+        raise ConfigError("display.pixel_format must be rgb565")
 
     log_level = _string(application, "log_level", "application").upper()
     if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
@@ -86,6 +95,8 @@ def load_config(path: Path) -> PiConfig:
         orientation=orientation,
         target_fps=_integer(display, "target_fps", "display", 1, 120),
         display_backend=backend,
+        framebuffer_device=Path(_string(display, "device", "display")),
+        pixel_format="rgb565",
         display_controller=display_controller,
         touch_controller=touch_controller,
         log_level=log_level,

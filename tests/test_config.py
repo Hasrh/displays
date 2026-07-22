@@ -20,10 +20,12 @@ def test_host_example_parses() -> None:
 
 def test_pi_example_parses() -> None:
     config = load_pi_config(ROOT / "config" / "pi.example.toml")
-    assert (config.width, config.height) == (320, 480)
-    assert config.display_backend == "auto"
+    assert (config.width, config.height) == (480, 320)
+    assert config.display_backend == "framebuffer"
+    assert config.framebuffer_device == Path("/dev/fb1")
+    assert config.pixel_format == "rgb565"
     assert config.display_controller == "ili9486"
-    assert config.touch_controller == "xpt2046"
+    assert config.touch_controller is None
 
 
 def test_missing_host_config_fails_safely(tmp_path: Path) -> None:

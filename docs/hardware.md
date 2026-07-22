@@ -2,16 +2,21 @@
 
 ## Current status
 
-The board specifications supplied by the owner identify:
+The working Raspberry Pi setup is:
 
-- LCD controller: **ILI9486**
+- Board: **Raspberry Pi Zero W Rev 1.1**
+- OS: **Raspberry Pi OS Lite (Bookworm)**, Linux 6.12.x
+- LCD module: **LCDWiki MPI3501**
+- LCD controller: **ILI9486**, driven by `fb_ili9486` through fbtft
+- Boot configuration: `dtparam=spi=on` and `dtoverlay=tft35a:rotate=90`
+- Framebuffer: **`/dev/fb1`**
+- Framebuffer geometry: **480×320**, 16 bits per pixel
+- Pixel format: **RGB565** (`rgba 5/11,6/5,5/0,0/0`)
 - Resistive-touch controller: **XPT2046** (ADS7846-compatible Linux driver family)
 
-The controller-identification gate is complete. The SPI wiring, chip selects, GPIO pins,
-kernel overlay, framebuffer/DRM device, input event device, rotation, and calibration matrix
-remain unverified. Similar-looking boards use different wiring, so controller names alone
-are not enough to select a boot overlay. Supply probe output and the board pinout before
-concrete display integration.
+The LCD path is verified by a successful solid-pattern test. The kernel applies the
+90-degree overlay rotation and exposes a 480×320 framebuffer. Touch input is intentionally
+deferred; its event device and calibration matrix are not required for the current milestone.
 
 ## Read-only probe
 
@@ -66,16 +71,8 @@ and `ads7846` may represent another compatible controller. Conversely, absent de
 mean SPI/overlays are not configured, not that those chips are absent. A `spidev` node only
 proves a generic SPI userspace device exists; it does not identify the connected controller.
 
-## Evidence required before concrete backend implementation
+## Remaining hardware work
 
-Record:
-
-1. Exact board model/revision, front/back photos, and PCB markings.
-2. Full probe output, Pi model, Raspberry Pi OS release, and kernel version.
-3. Physical SPI bus, chip selects, reset/data-command/backlight/interrupt pins.
-4. Verified ILI9486 overlay/driver and resulting `/dev/fb*` or `/dev/dri/*` device.
-5. Verified XPT2046 `/dev/input/event*`, native orientation, and calibration matrix.
-6. Measured full-frame throughput after a safe driver setup.
-
-Until these are supplied, the correct KMSDRM/framebuffer path and hardware-specific
-configuration remain blocked by design even though both controller models are identified.
+1. Measure sustained full-frame throughput and CPU usage on the Pi Zero W.
+2. Confirm the framebuffer device remains `/dev/fb1` across reboots.
+3. When touch is enabled later, identify its `/dev/input/event*` device and calibration matrix.

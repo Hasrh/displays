@@ -5,16 +5,17 @@ log_level = "INFO"
 url = "ws://192.168.1.10:8765"
 
 [display]
-# Controllers are identified; keep "auto" until the kernel overlay and device path are verified.
-backend = "auto"
+# Verified on LCDWiki MPI3501 with dtoverlay=tft35a:rotate=90.
+backend = "framebuffer"
+device = "/dev/fb1"
 controller = "ili9486"
-width = 320
-height = 480
-orientation = 0
+pixel_format = "rgb565"
+# fbset reports 480x320 after the kernel applies the 90-degree rotation.
+width = 480
+height = 320
+orientation = 90
 target_fps = 25
 
-[touch]
-controller = "xpt2046"
-
-# Authentication and touch calibration are intentionally absent until their contracts,
-# wiring, device path, and calibration matrix are verified.
+# Touch is intentionally disabled for now. Add this section when it is implemented:
+# [touch]
+# controller = "xpt2046"
