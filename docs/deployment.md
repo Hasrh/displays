@@ -85,8 +85,10 @@ status, and smoothed FFT bars. It renders directly into RGB565 and writes full f
 `/dev/fb1`; network tasks never block the fixed-rate render loop.
 
 Start with `display.target_fps = 10` on the Pi Zero W. Renderer logs report measured FPS and
-missed deadlines every five seconds. Increase the value only after observing stable CPU,
-temperature, and frame timing on the physical device.
+missed deadlines every five seconds, with separate `render_ms` and `write_ms` averages.
+The RGB565 canvas uses NumPy vectorization and cached bitmap text to keep Python work off the
+critical path. Increase the rate only after observing stable CPU, temperature, and frame timing
+on the physical device.
 
 ## Future Pi service
 

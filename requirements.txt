@@ -1,3 +1,4 @@
+numpy>=2.4.3,<2.5
 websockets>=16.1.1,<17
 
 # Install the project and development tools with: pip install -e ".[dev]"

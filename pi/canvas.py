@@ -2,16 +2,41 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
+import numpy as np
+from numpy.typing import NDArray
+
 from pi.fonts import GLYPHS
 from pi.themes import RGB
 
 
-def pack_rgb565(color: RGB) -> bytes:
+def pack_rgb565_value(color: RGB) -> int:
     red, green, blue = color
     if not all(0 <= component <= 255 for component in color):
         raise ValueError("RGB components must be between 0 and 255")
-    value = ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
-    return value.to_bytes(2, "little")
+    return ((red & 0xF8) << 8) | ((green & 0xFC) << 3) | (blue >> 3)
+
+
+def pack_rgb565(color: RGB) -> bytes:
+    return pack_rgb565_value(color).to_bytes(2, "little")
+
+
+@lru_cache(maxsize=512)
+def _text_mask(text: str, scale: int) -> NDArray[np.bool_]:
+    width = RGB565Canvas.text_width(text, scale)
+    base = np.zeros((7, max(0, width // scale)), dtype=np.bool_)
+    cursor = 0
+    for character in text:
+        glyph = GLYPHS.get(character, GLYPHS["?"])
+        for row_index, bits in enumerate(glyph):
+            for column in range(5):
+                if bits & (1 << (4 - column)):
+                    base[row_index, cursor + column] = True
+        cursor += 6
+    if scale == 1:
+        return base
+    return np.repeat(np.repeat(base, scale, axis=0), scale, axis=1)
 
 
 class RGB565Canvas:
@@ -24,10 +49,10 @@ class RGB565Canvas:
             raise ValueError("canvas dimensions must be positive")
         self.width = width
         self.height = height
-        self.buffer = bytearray(width * height * self.bytes_per_pixel)
+        self._pixels: NDArray[np.uint16] = np.zeros((height, width), dtype="<u2")
 
     def clear(self, color: RGB) -> None:
-        self.buffer[:] = pack_rgb565(color) * (self.width * self.height)
+        self._pixels.fill(pack_rgb565_value(color))
 
     def fill_rect(self, x: int, y: int, width: int, height: int, color: RGB) -> None:
         left = max(0, x)
@@ -36,12 +61,7 @@ class RGB565Canvas:
         bottom = min(self.height, y + height)
         if right <= left or bottom <= top:
             return
-        row = pack_rgb565(color) * (right - left)
-        stride = self.width * self.bytes_per_pixel
-        start_x = left * self.bytes_per_pixel
-        for row_index in range(top, bottom):
-            start = row_index * stride + start_x
-            self.buffer[start : start + len(row)] = row
+        self._pixels[top:bottom, left:right] = pack_rgb565_value(color)
 
     def stroke_rect(
         self,
@@ -77,20 +97,21 @@ class RGB565Canvas:
     ) -> None:
         if scale <= 0:
             raise ValueError("text scale must be positive")
-        cursor = x
-        for character in text.upper():
-            glyph = GLYPHS.get(character, GLYPHS["?"])
-            for row_index, bits in enumerate(glyph):
-                for column in range(5):
-                    if bits & (1 << (4 - column)):
-                        self.fill_rect(
-                            cursor + column * scale,
-                            y + row_index * scale,
-                            scale,
-                            scale,
-                            color,
-                        )
-            cursor += 6 * scale
+        mask = _text_mask(text.upper(), scale)
+        left = max(0, x)
+        top = max(0, y)
+        right = min(self.width, x + mask.shape[1])
+        bottom = min(self.height, y + mask.shape[0])
+        if right <= left or bottom <= top:
+            return
+        mask_left = left - x
+        mask_top = top - y
+        clipped_mask = mask[
+            mask_top : mask_top + (bottom - top),
+            mask_left : mask_left + (right - left),
+        ]
+        region = self._pixels[top:bottom, left:right]
+        region[clipped_mask] = pack_rgb565_value(color)
 
     def frame(self) -> memoryview:
-        return memoryview(self.buffer)
+        return self._pixels.data.cast("B")

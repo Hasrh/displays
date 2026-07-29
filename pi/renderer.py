@@ -81,9 +81,12 @@ class FixedRateRenderer:
         self._last_frame_time = monotonic()
         self.measured_fps = 0.0
         self.missed_deadlines = 0
+        self.last_render_ms = 0.0
+        self.last_write_ms = 0.0
 
     def render_once(self, now: float | None = None) -> None:
         frame_time = monotonic() if now is None else now
+        render_started = monotonic()
         delta = frame_time - self._last_frame_time
         self._last_frame_time = frame_time
         snapshot = self.store.snapshot()
@@ -102,7 +105,11 @@ class FixedRateRenderer:
             ),
             self.theme,
         )
+        write_started = monotonic()
         self.display.write_frame(self.canvas.frame())
+        completed = monotonic()
+        self.last_render_ms = (write_started - render_started) * 1000.0
+        self.last_write_ms = (completed - write_started) * 1000.0
 
     async def run(self, stop_event: asyncio.Event | None = None) -> None:
         stop = stop_event or asyncio.Event()
@@ -110,22 +117,31 @@ class FixedRateRenderer:
         next_frame = monotonic()
         report_started = next_frame
         report_frames = 0
+        report_render_ms = 0.0
+        report_write_ms = 0.0
         self.display.open()
         try:
             while not stop.is_set():
                 self.render_once()
                 report_frames += 1
+                report_render_ms += self.last_render_ms
+                report_write_ms += self.last_write_ms
                 now = monotonic()
                 if now - report_started >= 5.0:
                     self.measured_fps = report_frames / (now - report_started)
                     LOGGER.info(
-                        "Renderer fps=%.1f target=%d missed_deadlines=%d",
+                        "Renderer fps=%.1f target=%d render_ms=%.1f write_ms=%.1f "
+                        "missed_deadlines=%d",
                         self.measured_fps,
                         self.target_fps,
+                        report_render_ms / report_frames,
+                        report_write_ms / report_frames,
                         self.missed_deadlines,
                     )
                     report_started = now
                     report_frames = 0
+                    report_render_ms = 0.0
+                    report_write_ms = 0.0
 
                 next_frame += interval
                 delay = next_frame - monotonic()
