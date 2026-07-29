@@ -62,7 +62,9 @@ touch gestures only emit navigation actions to that manager.
 5. Headless renderer, then real display integration after hardware identification.
 6. Pages/navigation; calibrated touch remains deferred.
 7. Real Windows CPU, RAM, network, and optional LibreHardwareMonitor GPU collectors.
-8. Album art, FFT, and on-device performance tuning.
+8. Real media metadata, loopback FFT, and the retro media visualizer.
+9. Album art, themes, and on-device performance tuning.
+10. Touch input and playback commands last; weather remains paused.
 
 The LCDWiki MPI3501 display path is verified: ILI9486 via fbtft, the
 `tft35a:rotate=90` overlay, and a 480×320 RGB565 framebuffer at `/dev/fb1`.

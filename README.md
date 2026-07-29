@@ -9,7 +9,8 @@ stream are implemented. A live RGB565 system/FFT dashboard now renders that stat
 verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages share a
 configurable navigation manager. Windows CPU, RAM, and network telemetry is live, with
 per-GPU telemetry from an optional local LibreHardwareMonitor endpoint. Media, FFT, and weather
-remain synthetic; touch input and command execution are not implemented.
+remain synthetic. Weather development is paused; touch input and playback command execution
+are reserved for the final milestone.
 
 ## Requirements
 
