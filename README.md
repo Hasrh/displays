@@ -5,7 +5,9 @@ and process data, while a Raspberry Pi Zero WH will render cached state and forw
 This repository contains the approved project scaffolding, configuration parsers, validated
 shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer
 backend for hardware testing. The authenticated WebSocket host/client and synthetic transport
-stream are implemented. Pages, real collectors, and command execution are not implemented.
+stream are implemented. A live RGB565 system/FFT dashboard now renders that state on the
+verified framebuffer. Additional pages, real collectors, and command execution are not
+implemented.
 
 ## Requirements
 
@@ -36,10 +38,9 @@ outside source control (preferably through environment variables).
 
 ## Entry points
 
-`python -m pc.main --config config/host.toml` and
-`python -m pi.main --config config/pi.toml` validate configuration and then exit clearly
-because runtime features have not been implemented. The Pi entry point writes to the
-configured framebuffer only when the explicit `--display-test` option is supplied.
+`python -m pc.main --config config/host.toml` starts the authenticated synthetic WebSocket
+host. The Pi entry point offers `--network-test`, `--display-test`, and `--run-display`;
+without a mode it validates configuration without touching hardware.
 
 The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480×320 RGB565,
 and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`

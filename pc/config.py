@@ -90,9 +90,7 @@ def load_config(path: Path) -> HostConfig:
         default=15,
     )
     if client_timeout <= heartbeat_interval:
-        raise ConfigError(
-            "network.client_timeout_seconds must exceed heartbeat_interval_seconds"
-        )
+        raise ConfigError("network.client_timeout_seconds must exceed heartbeat_interval_seconds")
 
     return HostConfig(
         bind_host=_string(server, "bind_host", "server"),

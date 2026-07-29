@@ -22,7 +22,8 @@ pixel_format = "rgb565"
 width = 480
 height = 320
 orientation = 90
-target_fps = 25
+# Conservative full-frame rate for the Pi Zero W + SPI framebuffer.
+target_fps = 10
 
 # Touch is intentionally disabled for now. Add this section when it is implemented:
 # [touch]

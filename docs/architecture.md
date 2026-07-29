@@ -42,8 +42,14 @@ render, adjust local brightness, and forward controls.
   page, navigation, touch, theme, animation, and asset boundaries.
 - `shared/` cannot import platform-specific host or Pi modules.
 - Pages will receive read-only render context and cannot access networking or hardware.
-- Display and touch drivers remain behind interfaces. Logical UI coordinates are 320×480;
-  rotation/calibration occur once at the hardware boundary.
+- Display and touch drivers remain behind interfaces. The verified fbtft overlay exposes
+  480×320 logical coordinates after its 90-degree rotation; future touch calibration occurs
+  once at the hardware boundary.
+
+The implemented first page uses the verified 480×320 framebuffer geometry, an allocation-
+conscious RGB565 canvas, frame-rate-independent FFT smoothing, and a fixed-rate render loop.
+It consumes immutable snapshots and only the newest FFT frame. Additional pages and page
+navigation continue to use the same `Page` contract.
 
 ## Delivery gates
 

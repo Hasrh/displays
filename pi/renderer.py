@@ -1,8 +1,20 @@
-"""Small rendering primitives shared by display backends."""
+"""Fixed-rate renderer and framebuffer test primitives."""
 
+import asyncio
+import logging
 from collections.abc import Sequence
+from contextlib import suppress
+from time import monotonic
+
+from pi.animations import SmoothedBins
+from pi.canvas import RGB565Canvas
+from pi.display import DisplayBackend
+from pi.pages import Page, RenderContext, SystemVisualizerPage
+from pi.state import LatestStateStore
+from pi.themes import DARK_THEME, Theme
 
 RGB = tuple[int, int, int]
+LOGGER = logging.getLogger(__name__)
 
 TEST_COLORS: tuple[RGB, ...] = (
     (255, 255, 255),
@@ -42,3 +54,87 @@ def color_bars_rgb565(
         color = colors[min(y * len(colors) // height, len(colors) - 1)]
         rows.extend(rgb565_pixel(*color) * width)
     return bytes(rows)
+
+
+class FixedRateRenderer:
+    """Renders immutable state snapshots without waiting on network I/O."""
+
+    def __init__(
+        self,
+        display: DisplayBackend,
+        store: LatestStateStore,
+        target_fps: int,
+        *,
+        page: Page | None = None,
+        theme: Theme = DARK_THEME,
+    ) -> None:
+        if target_fps <= 0:
+            raise ValueError("target_fps must be positive")
+        self.display = display
+        self.store = store
+        self.target_fps = target_fps
+        self.page = page or SystemVisualizerPage()
+        self.theme = theme
+        self.canvas = RGB565Canvas(display.width, display.height)
+        self._smoother = SmoothedBins(64)
+        self._target_bins: tuple[float, ...] | None = None
+        self._last_frame_time = monotonic()
+        self.measured_fps = 0.0
+        self.missed_deadlines = 0
+
+    def render_once(self, now: float | None = None) -> None:
+        frame_time = monotonic() if now is None else now
+        delta = frame_time - self._last_frame_time
+        self._last_frame_time = frame_time
+        snapshot = self.store.snapshot()
+        fft = self.store.consume_fft()
+        if fft is not None:
+            self._target_bins = fft.bins
+        if not snapshot.connected:
+            self._target_bins = None
+        bins = self._smoother.update(self._target_bins, delta)
+        self.page.render(
+            self.canvas,
+            RenderContext(
+                snapshot=snapshot,
+                fft_bins=bins,
+                measured_fps=self.measured_fps,
+            ),
+            self.theme,
+        )
+        self.display.write_frame(self.canvas.frame())
+
+    async def run(self, stop_event: asyncio.Event | None = None) -> None:
+        stop = stop_event or asyncio.Event()
+        interval = 1.0 / self.target_fps
+        next_frame = monotonic()
+        report_started = next_frame
+        report_frames = 0
+        self.display.open()
+        try:
+            while not stop.is_set():
+                self.render_once()
+                report_frames += 1
+                now = monotonic()
+                if now - report_started >= 5.0:
+                    self.measured_fps = report_frames / (now - report_started)
+                    LOGGER.info(
+                        "Renderer fps=%.1f target=%d missed_deadlines=%d",
+                        self.measured_fps,
+                        self.target_fps,
+                        self.missed_deadlines,
+                    )
+                    report_started = now
+                    report_frames = 0
+
+                next_frame += interval
+                delay = next_frame - monotonic()
+                if delay <= 0:
+                    self.missed_deadlines += 1
+                    next_frame = monotonic()
+                    await asyncio.sleep(0)
+                else:
+                    with suppress(TimeoutError):
+                        await asyncio.wait_for(stop.wait(), timeout=delay)
+        finally:
+            self.display.close()

@@ -71,6 +71,23 @@ The Pi negotiates protocol version 1, authenticates, receives a full snapshot an
 frames, responds to application heartbeats, and reconnects with exponential backoff and
 jitter. This test logs state but does not render it.
 
+## Live dashboard
+
+Start the Windows host as above, then run on the Pi:
+
+```console
+export DESKTOP_DISPLAY_TOKEN="replace-with-the-same-long-random-secret"
+python3 -m pi.main --config config/pi.toml --run-display
+```
+
+The first page combines CPU, GPU, RAM, network throughput, playback progress, connection
+status, and smoothed FFT bars. It renders directly into RGB565 and writes full frames to
+`/dev/fb1`; network tasks never block the fixed-rate render loop.
+
+Start with `display.target_fps = 10` on the Pi Zero W. Renderer logs report measured FPS and
+missed deadlines every five seconds. Increase the value only after observing stable CPU,
+temperature, and frame timing on the physical device.
+
 ## Future Pi service
 
 Production deployment will use a dedicated unprivileged service account and a foreground

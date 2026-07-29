@@ -10,7 +10,7 @@ from pathlib import Path
 from pi.config import ConfigError, PiConfig, load_config
 from pi.display import DisplayBackend, DisplayError, FramebufferBackend, HeadlessBackend
 from pi.network import PiNetworkClient
-from pi.renderer import color_bars_rgb565
+from pi.renderer import FixedRateRenderer, color_bars_rgb565
 from pi.state import LatestStateStore
 
 LOGGER = logging.getLogger(__name__)
@@ -29,6 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--network-test",
         action="store_true",
         help="connect to the host and log received synthetic state",
+    )
+    modes.add_argument(
+        "--run-display",
+        action="store_true",
+        help="connect to the host and render the live dashboard",
     )
     return parser
 
@@ -74,6 +79,21 @@ async def run_network_test(config: PiConfig, auth_token: str) -> None:
         tasks.create_task(monitor_network(store))
 
 
+async def run_display_application(config: PiConfig, auth_token: str) -> None:
+    store = LatestStateStore()
+    client = PiNetworkClient(config, auth_token, store)
+    display = build_display(
+        config.display_backend,
+        config.framebuffer_device,
+        config.width,
+        config.height,
+    )
+    renderer = FixedRateRenderer(display, store, config.target_fps)
+    async with asyncio.TaskGroup() as tasks:
+        tasks.create_task(client.run())
+        tasks.create_task(renderer.run())
+
+
 def run(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
@@ -84,24 +104,28 @@ def run(argv: Sequence[str] | None = None) -> int:
         return 2
 
     logging.basicConfig(level=config.log_level)
-    if args.network_test:
+    if args.network_test or args.run_display:
         auth_token = os.environ.get(config.auth_token_env)
         if auth_token is None:
             LOGGER.error("Required environment variable %s is not set", config.auth_token_env)
             return 2
         try:
-            asyncio.run(run_network_test(config, auth_token))
+            operation = (
+                run_display_application(config, auth_token)
+                if args.run_display
+                else run_network_test(config, auth_token)
+            )
+            asyncio.run(operation)
         except KeyboardInterrupt:
-            LOGGER.info("Network test stopped")
-        except ValueError as exc:
-            LOGGER.error("Cannot start network client: %s", exc)
+            LOGGER.info("Pi application stopped")
+        except (DisplayError, ExceptionGroup, ValueError) as exc:
+            LOGGER.error("Cannot start Pi application: %s", exc)
             return 3
         return 0
 
     if not args.display_test:
         LOGGER.warning(
-            "Pi configuration is valid; use --display-test or --network-test. "
-            "Pages are not implemented"
+            "Pi configuration is valid; use --display-test, --network-test, or --run-display"
         )
         return 0
 
