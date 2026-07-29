@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import math
+from datetime import UTC, datetime
 
 from shared.constants import FFT_BIN_COUNT
-from shared.models import DisplayState, FFTFrame, MediaState, NetworkMetrics, SystemMetrics
+from shared.models import (
+    ClockState,
+    DisplayState,
+    FFTFrame,
+    MediaState,
+    NetworkMetrics,
+    SystemMetrics,
+    WeatherState,
+)
 
 
 class SyntheticStateSource:
@@ -14,6 +23,7 @@ class SyntheticStateSource:
     def state_at(self, elapsed_seconds: float) -> DisplayState:
         progress = elapsed_seconds % 240.0
         wave = (math.sin(elapsed_seconds * 0.7) + 1.0) / 2.0
+        local_now = datetime.now().astimezone()
         return DisplayState(
             media=MediaState(
                 title="Desktop Display Network Test",
@@ -35,6 +45,15 @@ class SyntheticStateSource:
             network=NetworkMetrics(
                 download_bytes_per_second=250_000.0 + wave * 750_000.0,
                 upload_bytes_per_second=25_000.0 + (1.0 - wave) * 125_000.0,
+            ),
+            weather=WeatherState(
+                temperature_c=24.0,
+                condition="SYNTHETIC CLEAR",
+                observed_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            ),
+            clock=ClockState(
+                time_text=local_now.strftime("%H:%M:%S"),
+                date_text=local_now.strftime("%A %d %B"),
             ),
         )
 

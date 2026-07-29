@@ -10,12 +10,14 @@ import pytest
 from shared.constants import MAX_JSON_MESSAGE_BYTES, PROTOCOL_VERSION, CommandAction, MessageType
 from shared.models import (
     AssetMetadata,
+    ClockState,
     DisplayCapabilities,
     DisplayState,
     FFTFrame,
     MediaState,
     NetworkMetrics,
     SystemMetrics,
+    WeatherState,
 )
 from shared.protocol import (
     AssetManifestPayload,
@@ -72,6 +74,12 @@ def sample_state() -> DisplayState:
             download_bytes_per_second=125_000.0,
             upload_bytes_per_second=12_500.0,
         ),
+        weather=WeatherState(
+            temperature_c=24.0,
+            condition="Clear",
+            observed_at=NOW,
+        ),
+        clock=ClockState(time_text="17:00:00", date_text="Wednesday 29 July"),
     )
 
 

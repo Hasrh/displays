@@ -9,7 +9,9 @@ from pathlib import Path
 
 from pi.config import ConfigError, PiConfig, load_config
 from pi.display import DisplayBackend, DisplayError, FramebufferBackend, HeadlessBackend
+from pi.navigation import PageManager
 from pi.network import PiNetworkClient
+from pi.pages import ClockPage, NowPlayingPage, SystemVisualizerPage, VisualizerPage
 from pi.renderer import FixedRateRenderer, color_bars_rgb565
 from pi.state import LatestStateStore
 
@@ -88,7 +90,17 @@ async def run_display_application(config: PiConfig, auth_token: str) -> None:
         config.width,
         config.height,
     )
-    renderer = FixedRateRenderer(display, store, config.target_fps)
+    pages = PageManager(
+        (
+            NowPlayingPage(),
+            VisualizerPage(),
+            SystemVisualizerPage(),
+            ClockPage(),
+        ),
+        initial_page=config.initial_page,
+        auto_cycle_seconds=config.auto_cycle_seconds,
+    )
+    renderer = FixedRateRenderer(display, store, config.target_fps, page=pages)
     async with asyncio.TaskGroup() as tasks:
         tasks.create_task(client.run())
         tasks.create_task(renderer.run())

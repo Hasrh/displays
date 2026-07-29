@@ -215,7 +215,7 @@ class StatePatchPayload:
     def from_dict(cls, value: object) -> StatePatchPayload:
         data = _object(value, "state_patch payload")
         changes = _object(data.get("changes"), "state_patch.changes")
-        unknown = set(changes).difference({"media", "system", "network", "weather"})
+        unknown = set(changes).difference({"media", "system", "network", "weather", "clock"})
         if unknown:
             raise ValueError(f"state_patch.changes contains unknown sections: {sorted(unknown)}")
         return cls(

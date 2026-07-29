@@ -12,6 +12,11 @@ reconnect_initial_seconds = 1.0
 reconnect_max_seconds = 30.0
 handshake_timeout_seconds = 10
 
+[navigation]
+initial_page = "system"
+# Set to 0 to disable automatic cycling until touch navigation is enabled.
+auto_cycle_seconds = 10
+
 [display]
 # Verified on LCDWiki MPI3501 with dtoverlay=tft35a:rotate=90.
 backend = "framebuffer"

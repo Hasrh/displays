@@ -84,9 +84,11 @@ class FixedRateRenderer:
         self.last_render_ms = 0.0
         self.last_write_ms = 0.0
         self.last_write_was_full = True
+        self.last_write_performed = True
         self._has_written_frame = False
         self._last_state: object = object()
         self._last_connected: bool | None = None
+        self._last_page_revision = -1
 
     def render_once(self, now: float | None = None) -> None:
         frame_time = monotonic() if now is None else now
@@ -110,14 +112,16 @@ class FixedRateRenderer:
             self.theme,
         )
         write_started = monotonic()
+        page_revision = self.page.revision
         full_update = (
             not self._has_written_frame
             or snapshot.state is not self._last_state
             or snapshot.connected != self._last_connected
+            or page_revision != self._last_page_revision
         )
         if full_update:
             self.display.write_frame(self.canvas.frame())
-        else:
+        elif self.page.continuous_updates:
             self.display.write_rows(
                 self.canvas.frame(),
                 self.page.partial_update_row,
@@ -125,11 +129,14 @@ class FixedRateRenderer:
             )
         completed = monotonic()
         self.last_render_ms = (write_started - render_started) * 1000.0
-        self.last_write_ms = (completed - write_started) * 1000.0
+        write_performed = full_update or self.page.continuous_updates
+        self.last_write_ms = (completed - write_started) * 1000.0 if write_performed else 0.0
         self.last_write_was_full = full_update
+        self.last_write_performed = write_performed
         self._has_written_frame = True
         self._last_state = snapshot.state
         self._last_connected = snapshot.connected
+        self._last_page_revision = page_revision
 
     async def run(self, stop_event: asyncio.Event | None = None) -> None:
         stop = stop_event or asyncio.Event()
@@ -140,6 +147,7 @@ class FixedRateRenderer:
         report_render_ms = 0.0
         report_write_ms = 0.0
         report_full_writes = 0
+        report_writes = 0
         self.display.open()
         try:
             while not stop.is_set():
@@ -148,18 +156,20 @@ class FixedRateRenderer:
                 report_render_ms += self.last_render_ms
                 report_write_ms += self.last_write_ms
                 report_full_writes += int(self.last_write_was_full)
+                report_writes += int(self.last_write_performed)
                 now = monotonic()
                 if now - report_started >= 5.0:
                     self.measured_fps = report_frames / (now - report_started)
                     LOGGER.info(
                         "Renderer fps=%.1f target=%d render_ms=%.1f write_ms=%.1f "
-                        "full_writes=%d/%d missed_deadlines=%d",
+                        "writes=%d/%d full_writes=%d missed_deadlines=%d",
                         self.measured_fps,
                         self.target_fps,
                         report_render_ms / report_frames,
-                        report_write_ms / report_frames,
-                        report_full_writes,
+                        report_write_ms / max(1, report_writes),
+                        report_writes,
                         report_frames,
+                        report_full_writes,
                         self.missed_deadlines,
                     )
                     report_started = now
@@ -167,6 +177,7 @@ class FixedRateRenderer:
                     report_render_ms = 0.0
                     report_write_ms = 0.0
                     report_full_writes = 0
+                    report_writes = 0
 
                 next_frame += interval
                 delay = next_frame - monotonic()

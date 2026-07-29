@@ -24,6 +24,8 @@ def test_pi_example_parses() -> None:
     config = load_pi_config(ROOT / "config" / "pi.example.toml")
     assert config.host_url == "ws://192.168.1.10:8765"
     assert config.client_id == "display-pi"
+    assert config.initial_page == "system"
+    assert config.auto_cycle_seconds == 10.0
     assert (config.width, config.height) == (480, 320)
     assert config.display_backend == "framebuffer"
     assert config.framebuffer_device == Path("/dev/fb1")

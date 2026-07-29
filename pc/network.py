@@ -231,6 +231,8 @@ class WebSocketHost:
                             "media": state.media.to_dict() if state.media else None,
                             "system": state.system.to_dict() if state.system else None,
                             "network": state.network.to_dict() if state.network else None,
+                            "weather": state.weather.to_dict() if state.weather else None,
+                            "clock": state.clock.to_dict() if state.clock else None,
                         },
                     ),
                 )

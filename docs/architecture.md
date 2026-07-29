@@ -46,10 +46,12 @@ render, adjust local brightness, and forward controls.
   480×320 logical coordinates after its 90-degree rotation; future touch calibration occurs
   once at the hardware boundary.
 
-The implemented first page uses the verified 480×320 framebuffer geometry, an allocation-
+The implemented renderer uses the verified 480×320 framebuffer geometry, an allocation-
 conscious RGB565 canvas, frame-rate-independent FFT smoothing, and a fixed-rate render loop.
-It consumes immutable snapshots and only the newest FFT frame. Additional pages and page
-navigation continue to use the same `Page` contract.
+It consumes immutable snapshots and only the newest FFT frame. Now Playing, Visualizer,
+System, and Clock/Weather implementations use the same `Page` contract. `PageManager` owns
+selection, wrapping, automatic cycling, transition revisions, and page indicators; future
+touch gestures only emit navigation actions to that manager.
 
 ## Delivery gates
 

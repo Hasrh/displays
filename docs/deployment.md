@@ -86,6 +86,18 @@ The first page combines CPU, GPU, RAM, network throughput, playback progress, co
 status, and smoothed FFT bars. It renders directly into RGB565 and writes full frames to
 `/dev/fb1`; network tasks never block the fixed-rate render loop.
 
+Four pages are available: `now_playing`, `visualizer`, `system`, and `clock`. Configure the
+initial page and automatic navigation in `config/pi.toml`:
+
+```toml
+[navigation]
+initial_page = "system"
+auto_cycle_seconds = 10
+```
+
+Set `auto_cycle_seconds = 0` to keep one page visible. Touch gestures will call the same page
+manager later; no page contains touch or hardware logic.
+
 Start with `display.target_fps = 10` on the Pi Zero W. Renderer logs report measured FPS and
 missed deadlines every five seconds, with separate `render_ms` and `write_ms` averages.
 The RGB565 canvas uses NumPy vectorization and cached bitmap text to keep Python work off the

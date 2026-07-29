@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from pi.canvas import RGB565Canvas
 from pi.pages.base import RenderContext
+from pi.pages.components import draw_header
 from pi.themes import RGB, Theme
 
 
 class SystemVisualizerPage:
     """First production page, driven entirely by host-authoritative state."""
 
+    page_id = "system"
+    revision = 0
+    continuous_updates = True
     partial_update_row = 190
 
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
@@ -21,14 +25,12 @@ class SystemVisualizerPage:
 
     @staticmethod
     def _header(canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
-        canvas.fill_rect(0, 0, canvas.width, 38, theme.surface)
-        canvas.fill_rect(0, 37, canvas.width, 1, theme.grid)
-        canvas.draw_text(12, 11, "DESKTOP DISPLAY", theme.text, scale=2)
-        status = "ONLINE" if context.snapshot.connected else "OFFLINE"
-        status_color = theme.success if context.snapshot.connected else theme.danger
-        width = canvas.text_width(status)
-        canvas.fill_rect(canvas.width - width - 24, 10, width + 12, 17, theme.surface_alt)
-        canvas.draw_text(canvas.width - width - 18, 15, status, status_color)
+        draw_header(
+            canvas,
+            "SYSTEM",
+            connected=context.snapshot.connected,
+            theme=theme,
+        )
 
     def _metrics(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
         state = context.snapshot.state

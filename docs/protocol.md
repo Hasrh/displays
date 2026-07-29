@@ -49,7 +49,8 @@ redacted from dataclass representations and must never be logged.
 Concrete payload dataclasses include `HelloPayload`, `WelcomePayload`,
 `StateSnapshotPayload`, `StatePatchPayload`, `FFTFrame`, `CommandPayload`,
 `CommandResultPayload`, `PingPayload`, `ErrorPayload`, and `AssetManifestPayload`.
-Display state is composed from typed media, system, network, and weather models.
+Display state is composed from typed media, system, network, weather, and host-formatted
+clock models.
 
 ## Binary assets
 

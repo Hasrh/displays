@@ -1,10 +1,15 @@
 """RGB565 canvas, page, animation, and fixed-rate renderer tests."""
 
+import pytest
+
 from pi.animations import SmoothedBins
 from pi.canvas import RGB565Canvas, pack_rgb565
 from pi.display import HeadlessBackend
+from pi.pages import ClockPage, NowPlayingPage, SystemVisualizerPage, VisualizerPage
+from pi.pages.base import Page, RenderContext
 from pi.renderer import FixedRateRenderer
 from pi.state import LatestStateStore
+from pi.themes import DARK_THEME
 from shared.constants import MessageType
 from shared.models import DisplayState, FFTFrame, MediaState, SystemMetrics
 from shared.protocol import StateSnapshotPayload, new_envelope
@@ -75,3 +80,22 @@ def test_renderer_writes_live_dashboard_to_headless_backend() -> None:
     assert display.last_frame is not None
     assert len(display.last_frame) == 480 * 320 * 2
     assert any(display.last_frame)
+
+
+@pytest.mark.parametrize(
+    "page",
+    [NowPlayingPage(), VisualizerPage(), SystemVisualizerPage(), ClockPage()],
+)
+def test_all_pages_render_at_verified_geometry(page: Page) -> None:
+    canvas = RGB565Canvas(480, 320)
+    page.render(
+        canvas,
+        RenderContext(
+            snapshot=LatestStateStore().snapshot(),
+            fft_bins=(0.5,) * 64,
+            measured_fps=9.0,
+        ),
+        DARK_THEME,
+    )
+    assert len(canvas.frame()) == 480 * 320 * 2
+    assert any(canvas.frame())

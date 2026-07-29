@@ -18,6 +18,8 @@ class PiConfig:
     reconnect_initial_seconds: float
     reconnect_max_seconds: float
     handshake_timeout_seconds: int
+    initial_page: str
+    auto_cycle_seconds: float
     width: int
     height: int
     orientation: int
@@ -92,6 +94,7 @@ def load_config(path: Path) -> PiConfig:
     display = _table(document.get("display"), "display")
     application = _table(document.get("application"), "application")
     network = _table(document.get("network", {}), "network")
+    navigation = _table(document.get("navigation", {}), "navigation")
 
     orientation = _integer(display, "orientation", "display", 0, 270)
     if orientation not in {0, 90, 180, 270}:
@@ -146,6 +149,24 @@ def load_config(path: Path) -> PiConfig:
         raise ConfigError(
             "network.reconnect_max_seconds must be at least reconnect_initial_seconds"
         )
+    initial_page = navigation.get("initial_page", "system")
+    if not isinstance(initial_page, str) or initial_page not in {
+        "now_playing",
+        "visualizer",
+        "system",
+        "clock",
+    }:
+        raise ConfigError(
+            "navigation.initial_page must be now_playing, visualizer, system, or clock"
+        )
+    auto_cycle_seconds = _number(
+        navigation,
+        "auto_cycle_seconds",
+        "navigation",
+        0.0,
+        3600.0,
+        default=10.0,
+    )
 
     return PiConfig(
         host_url=_string(host, "url", "host"),
@@ -161,6 +182,8 @@ def load_config(path: Path) -> PiConfig:
             60,
             default=10,
         ),
+        initial_page=initial_page,
+        auto_cycle_seconds=auto_cycle_seconds,
         width=_integer(display, "width", "display", 1, 8192),
         height=_integer(display, "height", "display", 1, 8192),
         orientation=orientation,

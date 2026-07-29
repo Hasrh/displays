@@ -68,6 +68,8 @@ async def exercise_loopback_transport() -> None:
         assert snapshot.state is not None
         assert snapshot.state.media is not None
         assert snapshot.state.media.title == "Desktop Display Network Test"
+        assert snapshot.state.clock is not None
+        assert snapshot.state.weather is not None
         assert snapshot.latest_fft is not None
         assert len(snapshot.latest_fft.bins) == 64
     finally:

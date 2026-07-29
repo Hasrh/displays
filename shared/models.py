@@ -214,11 +214,29 @@ class WeatherState:
 
 
 @dataclass(frozen=True, slots=True)
+class ClockState:
+    time_text: str
+    date_text: str
+
+    @classmethod
+    def from_dict(cls, value: object) -> ClockState:
+        data = _object(value, "clock")
+        return cls(
+            time_text=_string(data.get("time_text"), "clock.time_text"),
+            date_text=_string(data.get("date_text"), "clock.date_text"),
+        )
+
+    def to_dict(self) -> JsonObject:
+        return {"time_text": self.time_text, "date_text": self.date_text}
+
+
+@dataclass(frozen=True, slots=True)
 class DisplayState:
     media: MediaState | None = None
     system: SystemMetrics | None = None
     network: NetworkMetrics | None = None
     weather: WeatherState | None = None
+    clock: ClockState | None = None
 
     @classmethod
     def from_dict(cls, value: object) -> DisplayState:
@@ -236,6 +254,7 @@ class DisplayState:
             weather=(
                 WeatherState.from_dict(data["weather"]) if data.get("weather") is not None else None
             ),
+            clock=ClockState.from_dict(data["clock"]) if data.get("clock") is not None else None,
         )
 
     def to_dict(self) -> JsonObject:
@@ -244,6 +263,7 @@ class DisplayState:
             "system": self.system.to_dict() if self.system else None,
             "network": self.network.to_dict() if self.network else None,
             "weather": self.weather.to_dict() if self.weather else None,
+            "clock": self.clock.to_dict() if self.clock else None,
         }
 
 

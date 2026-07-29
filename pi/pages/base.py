@@ -16,6 +16,16 @@ class RenderContext:
 
 
 class Page(Protocol):
-    partial_update_row: int
+    @property
+    def page_id(self) -> str: ...
+
+    @property
+    def revision(self) -> int: ...
+
+    @property
+    def continuous_updates(self) -> bool: ...
+
+    @property
+    def partial_update_row(self) -> int: ...
 
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None: ...

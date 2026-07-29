@@ -6,7 +6,8 @@ This repository contains the approved project scaffolding, configuration parsers
 shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer
 backend for hardware testing. The authenticated WebSocket host/client and synthetic transport
 stream are implemented. A live RGB565 system/FFT dashboard now renders that state on the
-verified framebuffer. Additional pages, real collectors, and command execution are not
+verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages share a
+configurable navigation manager. Real collectors, touch input, and command execution are not
 implemented.
 
 ## Requirements
