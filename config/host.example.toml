@@ -2,9 +2,13 @@
 log_level = "INFO"
 
 [server]
-# Direct USB gadget address; do not bind the service to every network interface.
-bind_host = "192.168.7.1"
+# Reserve this address for the Windows Wi-Fi adapter in your router.
+bind_host = "192.168.1.10"
 port = 8765
 
-# Authentication is intentionally absent. A future token must come from an environment
-# variable or a local ignored config file; never commit it here.
+[network]
+auth_token_env = "DESKTOP_DISPLAY_TOKEN"
+heartbeat_interval_seconds = 5
+client_timeout_seconds = 15
+
+# The token itself comes from the named environment variable; never commit it.

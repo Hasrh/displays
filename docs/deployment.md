@@ -2,9 +2,9 @@
 
 Deployment is intentionally not active at this milestone.
 
-The intended production data path is the direct USB Ethernet gadget link documented in
-`docs/usb-direct.md`. Wi-Fi can remain available during development and recovery, but the
-application examples bind and connect through the isolated `192.168.7.0/24` USB link.
+The default data path is the private Wi-Fi LAN. Reserve the Windows host address in the
+router so the Pi endpoint remains stable. Direct USB Ethernet remains an optional deployment
+profile documented in `docs/usb-direct.md`.
 
 ## Windows development host
 
@@ -15,8 +15,21 @@ Copy-Item config\host.example.toml config\host.toml
 .\.venv\Scripts\python -m pc.main --config config\host.toml
 ```
 
-The composition root currently validates configuration, logs that runtime services are not
-implemented, and exits successfully. It does not bind a port.
+Set the same token on Windows and the Pi. It must contain at least 16 characters:
+
+```powershell
+$env:DESKTOP_DISPLAY_TOKEN = "replace-with-a-long-random-secret"
+python -m pc.main --config config/host.toml
+```
+
+The host binds only the configured Wi-Fi address and streams synthetic state until real
+collectors are implemented. Permit inbound TCP 8765 on the Windows Private firewall profile.
+
+```powershell
+New-NetFirewallRule `
+  -DisplayName "Desktop Companion Display WebSocket (Wi-Fi)" `
+  -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8765 -Profile Private
+```
 
 ## Raspberry Pi probe
 
@@ -46,6 +59,17 @@ python3 -m pi.main --config config/pi.toml --display-test
 This writes static RGB565 color bars and exits. The test does not configure SPI, load a
 driver, contact the Windows host, or access touch input. The user running it must belong to
 the `video` group or otherwise have write access to `/dev/fb1`.
+
+## Raspberry Pi network test
+
+```console
+export DESKTOP_DISPLAY_TOKEN="replace-with-the-same-long-random-secret"
+python3 -m pi.main --config config/pi.toml --network-test
+```
+
+The Pi negotiates protocol version 1, authenticates, receives a full snapshot and 64-bin FFT
+frames, responds to application heartbeats, and reconnects with exponential backoff and
+jitter. This test logs state but does not render it.
 
 ## Future Pi service
 

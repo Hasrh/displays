@@ -1,2 +1,3 @@
-# Runtime currently uses only the Python standard library.
-# Install development tools with: pip install -e ".[dev]"
+websockets>=16.1.1,<17
+
+# Install the project and development tools with: pip install -e ".[dev]"

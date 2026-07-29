@@ -2,8 +2,15 @@
 log_level = "INFO"
 
 [host]
-# Fixed Windows address on the direct USB Ethernet link.
-url = "ws://192.168.7.1:8765"
+# Use the reserved Windows Wi-Fi address.
+url = "ws://192.168.1.10:8765"
+
+[network]
+client_id = "display-pi"
+auth_token_env = "DESKTOP_DISPLAY_TOKEN"
+reconnect_initial_seconds = 1.0
+reconnect_max_seconds = 30.0
+handshake_timeout_seconds = 10
 
 [display]
 # Verified on LCDWiki MPI3501 with dtoverlay=tft35a:rotate=90.

@@ -6,7 +6,7 @@ DHCP, or cloud services. WebSockets continue to run over TCP with fixed addresse
 
 - Windows host: `192.168.7.1/24`
 - Raspberry Pi: `192.168.7.2/24`
-- Future WebSocket endpoint: `ws://192.168.7.1:8765`
+- WebSocket endpoint: `ws://192.168.7.1:8765`
 
 After the one-time setup, connecting the cable creates `usb0`, NetworkManager assigns the Pi
 address automatically, Windows reuses the adapter address, and the application reconnects.
@@ -87,7 +87,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup_usb_host_windows.ps1 `
 
 ## 4. Application configuration
 
-The committed examples are USB-first:
+The committed examples are Wi-Fi-first. Override the ignored local configuration files for
+USB operation:
 
 ```toml
 # config/host.toml
@@ -102,8 +103,7 @@ port = 8765
 url = "ws://192.168.7.1:8765"
 ```
 
-The USB link is ready before the application networking milestone, but no display data will
-flow until the WebSocket server and client are implemented.
+Start the implemented host and Pi network test as described in `docs/deployment.md`.
 
 ## Rollback
 

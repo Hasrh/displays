@@ -4,8 +4,8 @@ Desktop Companion Display is a host-authoritative companion screen: Windows will
 and process data, while a Raspberry Pi Zero WH will render cached state and forward input.
 This repository contains the approved project scaffolding, configuration parsers, validated
 shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB565 framebuffer
-backend for hardware testing. Networking, pages, collectors, and command execution are not
-implemented.
+backend for hardware testing. The authenticated WebSocket host/client and synthetic transport
+stream are implemented. Pages, real collectors, and command execution are not implemented.
 
 ## Requirements
 
@@ -45,9 +45,9 @@ The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480Ã
 and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`
 and `docs/deployment.md` before running the framebuffer test.
 
-The production data link is a direct USB cable: the Pi Zero runs as a USB Ethernet gadget at
-`192.168.7.2` and connects to the Windows host at `192.168.7.1`. This requires no Wi-Fi or
-router after one-time setup. Follow `docs/usb-direct.md`; do not edit boot files from memory.
+The default data link is a private Wi-Fi LAN with a router-reserved Windows address. Direct
+USB Ethernet remains optional; follow `docs/usb-direct.md` rather than editing boot files
+from memory.
 
 ## License
 

@@ -13,6 +13,11 @@ class ConfigError(ValueError):
 @dataclass(frozen=True, slots=True)
 class PiConfig:
     host_url: str
+    client_id: str
+    auth_token_env: str
+    reconnect_initial_seconds: float
+    reconnect_max_seconds: float
+    handshake_timeout_seconds: int
     width: int
     height: int
     orientation: int
@@ -38,11 +43,38 @@ def _string(table: dict[str, Any], key: str, section: str) -> str:
     return value
 
 
-def _integer(table: dict[str, Any], key: str, section: str, minimum: int, maximum: int) -> int:
-    value = table.get(key)
+def _integer(
+    table: dict[str, Any],
+    key: str,
+    section: str,
+    minimum: int,
+    maximum: int,
+    *,
+    default: int | None = None,
+) -> int:
+    value = table.get(key, default)
     if not isinstance(value, int) or isinstance(value, bool) or not minimum <= value <= maximum:
         raise ConfigError(f"{section}.{key} must be an integer from {minimum} to {maximum}")
     return value
+
+
+def _number(
+    table: dict[str, Any],
+    key: str,
+    section: str,
+    minimum: float,
+    maximum: float,
+    *,
+    default: float,
+) -> float:
+    value = table.get(key, default)
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not minimum <= float(value) <= maximum
+    ):
+        raise ConfigError(f"{section}.{key} must be a number from {minimum} to {maximum}")
+    return float(value)
 
 
 def load_config(path: Path) -> PiConfig:
@@ -59,6 +91,7 @@ def load_config(path: Path) -> PiConfig:
     host = _table(document.get("host"), "host")
     display = _table(document.get("display"), "display")
     application = _table(document.get("application"), "application")
+    network = _table(document.get("network", {}), "network")
 
     orientation = _integer(display, "orientation", "display", 0, 270)
     if orientation not in {0, 90, 180, 270}:
@@ -87,9 +120,47 @@ def load_config(path: Path) -> PiConfig:
     log_level = _string(application, "log_level", "application").upper()
     if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
         raise ConfigError("application.log_level is not a supported logging level")
+    client_id = network.get("client_id", "display-pi")
+    if not isinstance(client_id, str) or not client_id.strip():
+        raise ConfigError("network.client_id must be a non-empty string")
+    auth_token_env = network.get("auth_token_env", "DESKTOP_DISPLAY_TOKEN")
+    if not isinstance(auth_token_env, str) or not auth_token_env.strip():
+        raise ConfigError("network.auth_token_env must be a non-empty string")
+    reconnect_initial = _number(
+        network,
+        "reconnect_initial_seconds",
+        "network",
+        0.1,
+        60.0,
+        default=1.0,
+    )
+    reconnect_max = _number(
+        network,
+        "reconnect_max_seconds",
+        "network",
+        1.0,
+        300.0,
+        default=30.0,
+    )
+    if reconnect_max < reconnect_initial:
+        raise ConfigError(
+            "network.reconnect_max_seconds must be at least reconnect_initial_seconds"
+        )
 
     return PiConfig(
         host_url=_string(host, "url", "host"),
+        client_id=client_id,
+        auth_token_env=auth_token_env,
+        reconnect_initial_seconds=reconnect_initial,
+        reconnect_max_seconds=reconnect_max,
+        handshake_timeout_seconds=_integer(
+            network,
+            "handshake_timeout_seconds",
+            "network",
+            1,
+            60,
+            default=10,
+        ),
         width=_integer(display, "width", "display", 1, 8192),
         height=_integer(display, "height", "display", 1, 8192),
         orientation=orientation,

@@ -34,7 +34,8 @@ redacted from dataclass representations and must never be logged.
 ## Message families
 
 - `hello` / `welcome`: negotiate version, display dimensions/orientation, capabilities,
-  desired rates, theme, and authentication.
+  desired rates, theme, and pre-shared-token authentication. The token is loaded from an
+  environment variable and redacted from object representations and logs.
 - `state_snapshot`: complete authoritative state sent at handshake/reconnect.
 - `state_patch`: validated changes relative to the latest snapshot.
 - `fft_frame`: capture timestamp plus 64 normalized bins; only the newest pending frame
@@ -72,3 +73,8 @@ in a small Pi LRU cache.
 - Playback: event-driven plus about 1 Hz synchronization.
 - Clock and weather: host-controlled periodic updates.
 - Heartbeat: every several seconds with explicit stale/offline behavior.
+
+The current transport disables WebSocket compression and library-level ping frames to reduce
+Pi CPU overhead. Application `ping`/`pong` messages provide heartbeat semantics. The initial
+Wi-Fi deployment uses `ws://` on a trusted private LAN; TLS is required before operating on
+an untrusted network because the pre-shared token otherwise travels without encryption.
