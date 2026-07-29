@@ -68,6 +68,9 @@ def test_renderer_writes_live_dashboard_to_headless_backend() -> None:
     display.open()
     renderer = FixedRateRenderer(display, store, 10)
     renderer.render_once()
+    assert renderer.last_write_was_full
+    renderer.render_once()
+    assert not renderer.last_write_was_full
     display.close()
     assert display.last_frame is not None
     assert len(display.last_frame) == 480 * 320 * 2

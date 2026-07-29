@@ -24,6 +24,13 @@ class DisplayBackend(Protocol):
 
     def write_frame(self, frame: bytes | bytearray | memoryview) -> None: ...
 
+    def write_rows(
+        self,
+        frame: bytes | bytearray | memoryview,
+        start_row: int,
+        end_row: int,
+    ) -> None: ...
+
     def close(self) -> None: ...
 
 
@@ -68,14 +75,38 @@ class FramebufferBackend:
         mapping = self._mapping
         if mapping is None:
             raise DisplayError("framebuffer is not open")
+        view = self._validated_frame(frame)
+        mapping.seek(0)
+        mapping.write(view)
+
+    def write_rows(
+        self,
+        frame: bytes | bytearray | memoryview,
+        start_row: int,
+        end_row: int,
+    ) -> None:
+        mapping = self._mapping
+        if mapping is None:
+            raise DisplayError("framebuffer is not open")
+        view = self._validated_frame(frame)
+        start, end = self._row_range(start_row, end_row)
+        mapping.seek(start)
+        mapping.write(view[start:end])
+
+    def _validated_frame(self, frame: bytes | bytearray | memoryview) -> memoryview:
         view = memoryview(frame)
         if view.nbytes != self.frame_size:
             raise DisplayError(
                 f"frame has {view.nbytes} bytes; expected {self.frame_size} "
                 f"for {self.width}x{self.height} RGB565"
             )
-        mapping.seek(0)
-        mapping.write(view)
+        return view.cast("B") if view.format != "B" else view
+
+    def _row_range(self, start_row: int, end_row: int) -> tuple[int, int]:
+        if not 0 <= start_row < end_row <= self.height:
+            raise DisplayError(f"row range must satisfy 0 <= start < end <= {self.height}")
+        stride = self.width * self.bytes_per_pixel
+        return start_row * stride, end_row * stride
 
     def close(self) -> None:
         mapping, fd = self._mapping, self._fd
@@ -99,6 +130,7 @@ class HeadlessBackend:
         self.height = height
         self.frame_size = width * height * self.bytes_per_pixel
         self.last_frame: bytes | None = None
+        self._buffer = bytearray(self.frame_size)
         self.is_open = False
 
     def open(self) -> None:
@@ -113,7 +145,30 @@ class HeadlessBackend:
                 f"frame has {view.nbytes} bytes; expected {self.frame_size} "
                 f"for {self.width}x{self.height} RGB565"
             )
-        self.last_frame = bytes(view)
+        self._buffer[:] = view.cast("B") if view.format != "B" else view
+        self.last_frame = bytes(self._buffer)
+
+    def write_rows(
+        self,
+        frame: bytes | bytearray | memoryview,
+        start_row: int,
+        end_row: int,
+    ) -> None:
+        if not self.is_open:
+            raise DisplayError("headless display is not open")
+        view = memoryview(frame)
+        if view.nbytes != self.frame_size:
+            raise DisplayError(
+                f"frame has {view.nbytes} bytes; expected {self.frame_size} "
+                f"for {self.width}x{self.height} RGB565"
+            )
+        if not 0 <= start_row < end_row <= self.height:
+            raise DisplayError(f"row range must satisfy 0 <= start < end <= {self.height}")
+        stride = self.width * self.bytes_per_pixel
+        start, end = start_row * stride, end_row * stride
+        byte_view = view.cast("B") if view.format != "B" else view
+        self._buffer[start:end] = byte_view[start:end]
+        self.last_frame = bytes(self._buffer)
 
     def close(self) -> None:
         self.is_open = False

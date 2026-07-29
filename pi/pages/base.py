@@ -16,4 +16,6 @@ class RenderContext:
 
 
 class Page(Protocol):
+    partial_update_row: int
+
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None: ...

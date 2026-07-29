@@ -76,6 +76,8 @@ jitter. This test logs state but does not render it.
 Start the Windows host as above, then run on the Pi:
 
 ```console
+sudo apt install libopenblas0-pthread
+python3 -m pip install -e .
 export DESKTOP_DISPLAY_TOKEN="replace-with-the-same-long-random-secret"
 python3 -m pi.main --config config/pi.toml --run-display
 ```
@@ -87,8 +89,9 @@ status, and smoothed FFT bars. It renders directly into RGB565 and writes full f
 Start with `display.target_fps = 10` on the Pi Zero W. Renderer logs report measured FPS and
 missed deadlines every five seconds, with separate `render_ms` and `write_ms` averages.
 The RGB565 canvas uses NumPy vectorization and cached bitmap text to keep Python work off the
-critical path. Increase the rate only after observing stable CPU, temperature, and frame timing
-on the physical device.
+critical path. Between state patches, only the FFT framebuffer rows are copied; full writes
+refresh metrics and playback state. Increase the rate only after observing stable CPU,
+temperature, and frame timing on the physical device.
 
 ## Future Pi service
 

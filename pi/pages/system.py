@@ -10,6 +10,8 @@ from pi.themes import RGB, Theme
 class SystemVisualizerPage:
     """First production page, driven entirely by host-authoritative state."""
 
+    partial_update_row = 190
+
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
         canvas.clear(theme.background)
         self._header(canvas, context, theme)

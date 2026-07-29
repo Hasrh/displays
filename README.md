@@ -14,6 +14,7 @@ implemented.
 - Python 3.11 or newer
 - Windows for the future host runtime
 - Raspberry Pi OS for hardware probing and the future renderer
+- `libopenblas0-pthread` on Raspberry Pi OS for the NumPy RGB565 renderer
 
 ## Development
 

@@ -31,3 +31,12 @@ def test_headless_backend_rejects_wrong_frame_size() -> None:
     display.open()
     with pytest.raises(DisplayError, match="expected 16"):
         display.write_frame(b"\x00\x00")
+
+
+def test_headless_backend_updates_selected_rows() -> None:
+    display = HeadlessBackend(2, 3)
+    display.open()
+    display.write_frame(b"\x00\x00" * 6)
+    changed = b"\xff\xff" * 6
+    display.write_rows(changed, 1, 2)
+    assert display.last_frame == b"\x00\x00" * 2 + b"\xff\xff" * 2 + b"\x00\x00" * 2
