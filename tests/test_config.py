@@ -18,6 +18,10 @@ def test_host_example_parses() -> None:
     assert config.port == 8765
     assert config.log_level == "INFO"
     assert config.auth_token_env == "DESKTOP_DISPLAY_TOKEN"
+    assert config.system_collector_enabled is True
+    assert config.system_interval_seconds == 1.0
+    assert config.hardware_monitor_enabled is True
+    assert config.hardware_monitor_url == "http://127.0.0.1:8085/data.json"
 
 
 def test_pi_example_parses() -> None:

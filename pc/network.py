@@ -8,6 +8,7 @@ import logging
 from contextlib import suppress
 from datetime import UTC, datetime
 from time import monotonic
+from typing import Protocol
 
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
@@ -16,6 +17,7 @@ from websockets.typing import Subprotocol
 from pc.config import HostConfig
 from pc.state import SyntheticStateSource
 from shared.constants import MAX_JSON_MESSAGE_BYTES, MessageType
+from shared.models import DisplayState, FFTFrame
 from shared.protocol import (
     CommandPayload,
     CommandResultPayload,
@@ -36,6 +38,12 @@ from shared.protocol import (
 
 LOGGER = logging.getLogger(__name__)
 SUBPROTOCOL = Subprotocol("desktop-display.v1")
+
+
+class StateSource(Protocol):
+    def state_at(self, elapsed_seconds: float) -> DisplayState: ...
+
+    def fft_at(self, elapsed_seconds: float, captured_at: str) -> FFTFrame: ...
 
 
 def _utc_now() -> str:
@@ -75,7 +83,7 @@ class WebSocketHost:
         config: HostConfig,
         auth_token: str,
         *,
-        state_source: SyntheticStateSource | None = None,
+        state_source: StateSource | None = None,
     ) -> None:
         if len(auth_token) < 16:
             raise ValueError("authentication token must contain at least 16 characters")

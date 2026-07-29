@@ -7,8 +7,9 @@ shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB56
 backend for hardware testing. The authenticated WebSocket host/client and synthetic transport
 stream are implemented. A live RGB565 system/FFT dashboard now renders that state on the
 verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages share a
-configurable navigation manager. Real collectors, touch input, and command execution are not
-implemented.
+configurable navigation manager. Windows CPU, RAM, and network telemetry is live, with
+per-GPU telemetry from an optional local LibreHardwareMonitor endpoint. Media, FFT, and weather
+remain synthetic; touch input and command execution are not implemented.
 
 ## Requirements
 
@@ -16,12 +17,13 @@ implemented.
 - Windows for the future host runtime
 - Raspberry Pi OS for hardware probing and the future renderer
 - `libopenblas0-pthread` on Raspberry Pi OS for the NumPy RGB565 renderer
+- LibreHardwareMonitor on Windows for per-GPU load, VRAM, and temperature metrics
 
 ## Development
 
 ```console
 python -m venv .venv
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[host,dev]"
 python -m pytest
 python -m ruff check .
 python -m ruff format --check .
@@ -40,9 +42,10 @@ outside source control (preferably through environment variables).
 
 ## Entry points
 
-`python -m pc.main --config config/host.toml` starts the authenticated synthetic WebSocket
-host. The Pi entry point offers `--network-test`, `--display-test`, and `--run-display`;
-without a mode it validates configuration without touching hardware.
+`python -m pc.main --config config/host.toml` starts the authenticated WebSocket host with
+real Windows system telemetry and synthetic sources for unfinished integrations. The Pi entry
+point offers `--network-test`, `--display-test`, and `--run-display`; without a mode it
+validates configuration without touching hardware.
 
 The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480×320 RGB565,
 and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`

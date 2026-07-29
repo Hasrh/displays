@@ -14,6 +14,7 @@ from shared.models import (
     DisplayCapabilities,
     DisplayState,
     FFTFrame,
+    GpuMetrics,
     MediaState,
     NetworkMetrics,
     SystemMetrics,
@@ -69,6 +70,10 @@ def sample_state() -> DisplayState:
             ram_usage_percent=38.5,
             cpu_temperature_c=54.0,
             gpu_temperature_c=63.0,
+            gpus=(
+                GpuMetrics(name="Intel GPU", usage_percent=12.0),
+                GpuMetrics(name="NVIDIA GPU", usage_percent=71.0),
+            ),
         ),
         network=NetworkMetrics(
             download_bytes_per_second=125_000.0,

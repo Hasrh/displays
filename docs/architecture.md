@@ -8,9 +8,9 @@ It does not implement networking, collection, rendering, touch handling, or comm
 
 ## Topology
 
-- **Windows host:** one future `asyncio` composition root owns collectors, canonical state,
+- **Windows host:** one `asyncio` composition root owns collectors, canonical state,
   audio/FFT processing, asset preparation, command execution, and the WebSocket server.
-  Blocking adapters will sit behind bounded queues in workers.
+  Blocking system and HTTP sampling runs in a worker thread so it cannot stall transport.
 - **Raspberry Pi:** one future foreground process managed by `systemd` reconnects to the
   host, keeps the latest immutable state and a bounded asset cache, renders at a fixed rate,
   and translates input into semantic actions.
@@ -60,8 +60,8 @@ touch gestures only emit navigation actions to that manager.
 3. Shared contracts and compatibility tests.
 4. WebSocket handshake, heartbeat, snapshots, reconnect, and synthetic data.
 5. Headless renderer, then real display integration after hardware identification.
-6. Pages/navigation and calibrated touch.
-7. Real Windows collectors.
+6. Pages/navigation; calibrated touch remains deferred.
+7. Real Windows CPU, RAM, network, and optional LibreHardwareMonitor GPU collectors.
 8. Album art, FFT, and on-device performance tuning.
 
 The LCDWiki MPI3501 display path is verified: ILI9486 via fbtft, the

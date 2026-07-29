@@ -116,6 +116,34 @@ class MediaState:
 
 
 @dataclass(frozen=True, slots=True)
+class GpuMetrics:
+    name: str
+    usage_percent: float | None = None
+    vram_usage_percent: float | None = None
+    temperature_c: float | None = None
+
+    @classmethod
+    def from_dict(cls, value: object) -> GpuMetrics:
+        data = _object(value, "gpu")
+        return cls(
+            name=_string(data.get("name"), "gpu.name"),
+            usage_percent=_optional_percentage(data.get("usage_percent"), "gpu.usage_percent"),
+            vram_usage_percent=_optional_percentage(
+                data.get("vram_usage_percent"), "gpu.vram_usage_percent"
+            ),
+            temperature_c=_optional_number(data.get("temperature_c"), "gpu.temperature_c"),
+        )
+
+    def to_dict(self) -> JsonObject:
+        return {
+            "name": self.name,
+            "usage_percent": self.usage_percent,
+            "vram_usage_percent": self.vram_usage_percent,
+            "temperature_c": self.temperature_c,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class SystemMetrics:
     cpu_usage_percent: float | None = None
     gpu_usage_percent: float | None = None
@@ -123,10 +151,14 @@ class SystemMetrics:
     vram_usage_percent: float | None = None
     cpu_temperature_c: float | None = None
     gpu_temperature_c: float | None = None
+    gpus: tuple[GpuMetrics, ...] = ()
 
     @classmethod
     def from_dict(cls, value: object) -> SystemMetrics:
         data = _object(value, "system")
+        raw_gpus = data.get("gpus", [])
+        if not isinstance(raw_gpus, list):
+            raise ValueError("system.gpus must be an array")
         return cls(
             cpu_usage_percent=_optional_percentage(
                 data.get("cpu_usage_percent"), "system.cpu_usage_percent"
@@ -146,6 +178,7 @@ class SystemMetrics:
             gpu_temperature_c=_optional_number(
                 data.get("gpu_temperature_c"), "system.gpu_temperature_c"
             ),
+            gpus=tuple(GpuMetrics.from_dict(item) for item in raw_gpus),
         )
 
     def to_dict(self) -> JsonObject:
@@ -156,6 +189,7 @@ class SystemMetrics:
             "vram_usage_percent": self.vram_usage_percent,
             "cpu_temperature_c": self.cpu_temperature_c,
             "gpu_temperature_c": self.gpu_temperature_c,
+            "gpus": [gpu.to_dict() for gpu in self.gpus],
         }
 
 

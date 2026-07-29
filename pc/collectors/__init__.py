@@ -1,3 +1,15 @@
-"""Host-side collector adapters (not yet implemented)."""
+"""Windows-side telemetry collectors."""
 
-__all__: list[str] = []
+from pc.collectors.system import (
+    LibreHardwareMonitorClient,
+    SystemSample,
+    WindowsSystemCollector,
+    parse_gpu_metrics,
+)
+
+__all__ = [
+    "LibreHardwareMonitorClient",
+    "SystemSample",
+    "WindowsSystemCollector",
+    "parse_gpu_metrics",
+]

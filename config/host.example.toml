@@ -11,4 +11,14 @@ auth_token_env = "DESKTOP_DISPLAY_TOKEN"
 heartbeat_interval_seconds = 5
 client_timeout_seconds = 15
 
+[collectors.system]
+enabled = true
+interval_seconds = 1.0
+
+[collectors.librehardwaremonitor]
+# Start LibreHardwareMonitor as administrator and enable Options > Remote Web Server > Run.
+enabled = true
+url = "http://127.0.0.1:8085/data.json"
+timeout_seconds = 1.0
+
 # The token itself comes from the named environment variable; never commit it.

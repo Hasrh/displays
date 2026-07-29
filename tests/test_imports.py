@@ -13,6 +13,8 @@ import pytest
         "shared.models",
         "shared.protocol",
         "pc",
+        "pc.collectors",
+        "pc.collectors.system",
         "pc.config",
         "pc.main",
         "pi",

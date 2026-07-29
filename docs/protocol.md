@@ -50,7 +50,8 @@ Concrete payload dataclasses include `HelloPayload`, `WelcomePayload`,
 `StateSnapshotPayload`, `StatePatchPayload`, `FFTFrame`, `CommandPayload`,
 `CommandResultPayload`, `PingPayload`, `ErrorPayload`, and `AssetManifestPayload`.
 Display state is composed from typed media, system, network, weather, and host-formatted
-clock models.
+clock models. System state keeps aggregate GPU fields for compatibility and includes an
+ordered `gpus` array with each device name, load, VRAM load, and temperature when available.
 
 ## Binary assets
 

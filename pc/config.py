@@ -18,6 +18,11 @@ class HostConfig:
     auth_token_env: str
     heartbeat_interval_seconds: int
     client_timeout_seconds: int
+    system_collector_enabled: bool
+    system_interval_seconds: float
+    hardware_monitor_enabled: bool
+    hardware_monitor_url: str
+    hardware_monitor_timeout_seconds: float
 
 
 def _table(value: object, name: str) -> dict[str, Any]:
@@ -48,6 +53,31 @@ def _integer(
     return value
 
 
+def _number(
+    table: dict[str, Any],
+    key: str,
+    section: str,
+    minimum: float,
+    maximum: float,
+    *,
+    default: float,
+) -> float:
+    value = table.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise ConfigError(f"{section}.{key} must be a number")
+    converted = float(value)
+    if not minimum <= converted <= maximum:
+        raise ConfigError(f"{section}.{key} must be from {minimum} to {maximum}")
+    return converted
+
+
+def _boolean(table: dict[str, Any], key: str, section: str, *, default: bool) -> bool:
+    value = table.get(key, default)
+    if not isinstance(value, bool):
+        raise ConfigError(f"{section}.{key} must be true or false")
+    return value
+
+
 def load_config(path: Path) -> HostConfig:
     """Load a host TOML file without resolving or logging secrets."""
 
@@ -63,6 +93,12 @@ def load_config(path: Path) -> HostConfig:
     application = _table(document.get("application"), "application")
     network_value = document.get("network", {})
     network = _table(network_value, "network")
+    collectors = _table(document.get("collectors", {}), "collectors")
+    system_collector = _table(collectors.get("system", {}), "collectors.system")
+    hardware_monitor = _table(
+        collectors.get("librehardwaremonitor", {}),
+        "collectors.librehardwaremonitor",
+    )
     port = server.get("port")
     if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
         raise ConfigError("server.port must be an integer from 1 to 65535")
@@ -91,6 +127,12 @@ def load_config(path: Path) -> HostConfig:
     )
     if client_timeout <= heartbeat_interval:
         raise ConfigError("network.client_timeout_seconds must exceed heartbeat_interval_seconds")
+    hardware_monitor_url = hardware_monitor.get(
+        "url",
+        "http://127.0.0.1:8085/data.json",
+    )
+    if not isinstance(hardware_monitor_url, str) or not hardware_monitor_url.strip():
+        raise ConfigError("collectors.librehardwaremonitor.url must be a non-empty string")
 
     return HostConfig(
         bind_host=_string(server, "bind_host", "server"),
@@ -99,4 +141,33 @@ def load_config(path: Path) -> HostConfig:
         auth_token_env=auth_token_env,
         heartbeat_interval_seconds=heartbeat_interval,
         client_timeout_seconds=client_timeout,
+        system_collector_enabled=_boolean(
+            system_collector,
+            "enabled",
+            "collectors.system",
+            default=True,
+        ),
+        system_interval_seconds=_number(
+            system_collector,
+            "interval_seconds",
+            "collectors.system",
+            0.25,
+            60.0,
+            default=1.0,
+        ),
+        hardware_monitor_enabled=_boolean(
+            hardware_monitor,
+            "enabled",
+            "collectors.librehardwaremonitor",
+            default=True,
+        ),
+        hardware_monitor_url=hardware_monitor_url,
+        hardware_monitor_timeout_seconds=_number(
+            hardware_monitor,
+            "timeout_seconds",
+            "collectors.librehardwaremonitor",
+            0.1,
+            10.0,
+            default=1.0,
+        ),
     )

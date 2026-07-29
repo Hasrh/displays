@@ -1,6 +1,6 @@
 # Deployment outline
 
-Deployment is intentionally not active at this milestone.
+The host and Pi currently run interactively; service installation is deferred.
 
 The default data path is the private Wi-Fi LAN. Reserve the Windows host address in the
 router so the Pi endpoint remains stable. Direct USB Ethernet remains an optional deployment
@@ -10,7 +10,7 @@ profile documented in `docs/usb-direct.md`.
 
 ```powershell
 py -3.11 -m venv .venv
-.\.venv\Scripts\python -m pip install -e ".[dev]"
+.\.venv\Scripts\python -m pip install -e ".[host,dev]"
 Copy-Item config\host.example.toml config\host.toml
 .\.venv\Scripts\python -m pc.main --config config\host.toml
 ```
@@ -22,14 +22,43 @@ $env:DESKTOP_DISPLAY_TOKEN = "replace-with-a-long-random-secret"
 python -m pc.main --config config/host.toml
 ```
 
-The host binds only the configured Wi-Fi address and streams synthetic state until real
-collectors are implemented. Permit inbound TCP 8765 on the Windows Private firewall profile.
+The host binds only the configured Wi-Fi address. CPU, RAM, and network metrics come from
+Windows; media, FFT, and weather are still synthetic. Permit inbound TCP 8765 on the Windows
+Private firewall profile.
 
 ```powershell
 New-NetFirewallRule `
   -DisplayName "Desktop Companion Display WebSocket (Wi-Fi)" `
   -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8765 -Profile Private
 ```
+
+### Enable per-GPU telemetry
+
+Download LibreHardwareMonitor from its official GitHub releases, run it as administrator,
+then enable **Options > Remote Web Server > Run**. Keep the endpoint bound locally and verify
+it before starting the display host:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8085/data.json | Select-Object -First 1
+```
+
+The host discovers GPUs by their stable sensor IDs rather than JSON tree positions. Configure
+the endpoint in `config/host.toml`:
+
+```toml
+[collectors.system]
+enabled = true
+interval_seconds = 1.0
+
+[collectors.librehardwaremonitor]
+enabled = true
+url = "http://127.0.0.1:8085/data.json"
+timeout_seconds = 1.0
+```
+
+LibreHardwareMonitor is optional. If it is stopped, GPU cards show unavailable while CPU, RAM,
+network, WebSocket, and rendering continue. Set its `enabled` option to `false` to suppress
+connection attempts.
 
 ## Raspberry Pi probe
 
@@ -82,8 +111,8 @@ export DESKTOP_DISPLAY_TOKEN="replace-with-the-same-long-random-secret"
 python3 -m pi.main --config config/pi.toml --run-display
 ```
 
-The first page combines CPU, GPU, RAM, network throughput, playback progress, connection
-status, and smoothed FFT bars. It renders directly into RGB565 and writes full frames to
+The system page displays CPU, RAM, network throughput, and two separately named GPU devices
+alongside smoothed FFT bars. It renders directly into RGB565 and writes full frames to
 `/dev/fb1`; network tasks never block the fixed-rate render loop.
 
 Four pages are available: `now_playing`, `visualizer`, `system`, and `clock`. Configure the

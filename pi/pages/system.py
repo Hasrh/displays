@@ -20,7 +20,7 @@ class SystemVisualizerPage:
         canvas.clear(theme.background)
         self._header(canvas, context, theme)
         self._metrics(canvas, context, theme)
-        self._playback(canvas, context, theme)
+        self._details(canvas, context, theme)
         self._visualizer(canvas, context.fft_bins, theme)
 
     @staticmethod
@@ -35,18 +35,16 @@ class SystemVisualizerPage:
     def _metrics(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
         state = context.snapshot.state
         system = state.system if state is not None else None
-        network = state.network if state is not None else None
+        gpus = system.gpus if system else ()
+        first_gpu = gpus[0].usage_percent if len(gpus) >= 1 else None
+        second_gpu = gpus[1].usage_percent if len(gpus) >= 2 else None
+        if not gpus and system is not None:
+            first_gpu = system.gpu_usage_percent
         values = (
             ("CPU", system.cpu_usage_percent if system else None, "%", 100.0, theme.accent),
-            ("GPU", system.gpu_usage_percent if system else None, "%", 100.0, theme.warning),
+            ("GPU1", first_gpu, "%", 100.0, theme.warning),
+            ("GPU2", second_gpu, "%", 100.0, theme.danger),
             ("RAM", system.ram_usage_percent if system else None, "%", 100.0, theme.success),
-            (
-                "DOWN",
-                network.download_bytes_per_second / 125_000.0 if network else None,
-                "M",
-                10.0,
-                theme.accent,
-            ),
         )
         gap = 8
         margin = 12
@@ -89,19 +87,31 @@ class SystemVisualizerPage:
         canvas.fill_rect(x + 8, y + 60, int((width - 16) * normalized), 4, color)
 
     @staticmethod
-    def _playback(canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
-        media = context.snapshot.state.media if context.snapshot.state else None
-        title = media.title if media else "WAITING FOR HOST STATE"
-        artist = media.artist if media else "SYNTHETIC TRANSPORT"
-        canvas.draw_text(12, 137, title[:50], theme.text)
-        canvas.draw_text(12, 151, artist[:50], theme.text_muted)
-        progress = (
-            media.position_seconds / media.duration_seconds
-            if media is not None and media.duration_seconds > 0
-            else 0.0
-        )
-        canvas.fill_rect(12, 169, canvas.width - 24, 4, theme.surface_alt)
-        canvas.fill_rect(12, 169, int((canvas.width - 24) * progress), 4, theme.accent)
+    def _details(canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
+        state = context.snapshot.state
+        system = state.system if state else None
+        network = state.network if state else None
+        gpus = system.gpus if system else ()
+        for index in range(2):
+            if index < len(gpus):
+                gpu = gpus[index]
+                usage = "--" if gpu.usage_percent is None else f"{gpu.usage_percent:.0f}%"
+                detail = f"GPU{index + 1} {usage} {gpu.name}"
+            else:
+                detail = f"GPU{index + 1} -- NOT AVAILABLE"
+            canvas.draw_text(
+                12,
+                135 + index * 15,
+                detail[:55],
+                theme.text if index == 0 else theme.text_muted,
+            )
+        if network is None:
+            network_text = "NETWORK --"
+        else:
+            down = network.download_bytes_per_second / 125_000.0
+            up = network.upload_bytes_per_second / 125_000.0
+            network_text = f"NETWORK DOWN {down:.1f}M  UP {up:.1f}M"
+        canvas.draw_text(12, 169, network_text[:55], theme.accent)
 
     @staticmethod
     def _visualizer(canvas: RGB565Canvas, bins: tuple[float, ...], theme: Theme) -> None:

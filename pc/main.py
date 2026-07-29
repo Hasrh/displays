@@ -7,10 +7,46 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from pc.config import ConfigError, load_config
-from pc.network import WebSocketHost
+from pc.collectors import LibreHardwareMonitorClient, WindowsSystemCollector
+from pc.config import ConfigError, HostConfig, load_config
+from pc.network import StateSource, WebSocketHost
+from pc.state import HostStateSource, SyntheticStateSource
 
 LOGGER = logging.getLogger(__name__)
+
+
+async def run_application(config: HostConfig, auth_token: str) -> None:
+    source: StateSource
+    collector_task: asyncio.Task[None] | None = None
+    if config.system_collector_enabled:
+        hardware_monitor = (
+            LibreHardwareMonitorClient(
+                config.hardware_monitor_url,
+                config.hardware_monitor_timeout_seconds,
+            )
+            if config.hardware_monitor_enabled
+            else None
+        )
+        live_source = HostStateSource(
+            WindowsSystemCollector(hardware_monitor),
+            config.system_interval_seconds,
+        )
+        await live_source.initialize()
+        collector_task = asyncio.create_task(
+            live_source.run(),
+            name="windows-system-collector",
+        )
+        source = live_source
+    else:
+        LOGGER.warning("Windows system collector is disabled; using synthetic telemetry")
+        source = SyntheticStateSource()
+
+    try:
+        await WebSocketHost(config, auth_token, state_source=source).run()
+    finally:
+        if collector_task is not None:
+            collector_task.cancel()
+            await asyncio.gather(collector_task, return_exceptions=True)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,8 +79,7 @@ def run(argv: Sequence[str] | None = None) -> int:
         LOGGER.error("Required environment variable %s is not set", config.auth_token_env)
         return 2
     try:
-        host = WebSocketHost(config, auth_token)
-        asyncio.run(host.run())
+        asyncio.run(run_application(config, auth_token))
     except KeyboardInterrupt:
         LOGGER.info("Host stopped")
     except (OSError, ValueError) as exc:
