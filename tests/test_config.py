@@ -24,6 +24,7 @@ def test_host_example_parses() -> None:
     assert config.hardware_monitor_url == "http://127.0.0.1:8085/data.json"
     assert config.media_collector_enabled is True
     assert config.media_interval_seconds == 1.0
+    assert config.album_art_enabled is True
     assert config.fft_collector_enabled is True
     assert config.fft_size == 2048
 
@@ -34,6 +35,9 @@ def test_pi_example_parses() -> None:
     assert config.client_id == "display-pi"
     assert config.initial_page == "system"
     assert config.auto_cycle_seconds == 10.0
+    assert config.theme == "dark"
+    assert config.animations_enabled is True
+    assert config.asset_cache_capacity == 8
     assert (config.width, config.height) == (480, 320)
     assert config.display_backend == "framebuffer"
     assert config.framebuffer_device == Path("/dev/fb1")

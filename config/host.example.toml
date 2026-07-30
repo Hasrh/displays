@@ -25,6 +25,8 @@ timeout_seconds = 1.0
 # Reads the active Windows Global System Media Transport Controls session.
 enabled = true
 interval_seconds = 1.0
+# Host-resizes GSMTC thumbnails to 152x152 RGB565 before transfer.
+album_art_enabled = true
 
 [collectors.fft]
 # Captures default speaker output through WASAPI loopback and streams 64 FFT bins.

@@ -6,7 +6,8 @@ from collections.abc import Sequence
 from contextlib import suppress
 from time import monotonic
 
-from pi.animations import SmoothedBins
+from pi.animations import PageTransition, ProgressPulse, SmoothedBins
+from pi.assets import AssetCache
 from pi.canvas import RGB565Canvas
 from pi.display import DisplayBackend
 from pi.pages import Page, RenderContext, SystemVisualizerPage
@@ -67,6 +68,8 @@ class FixedRateRenderer:
         *,
         page: Page | None = None,
         theme: Theme = DARK_THEME,
+        assets: AssetCache | None = None,
+        animations_enabled: bool = True,
     ) -> None:
         if target_fps <= 0:
             raise ValueError("target_fps must be positive")
@@ -75,8 +78,12 @@ class FixedRateRenderer:
         self.target_fps = target_fps
         self.page = page or SystemVisualizerPage()
         self.theme = theme
+        self.assets = assets
+        self.animations_enabled = animations_enabled
         self.canvas = RGB565Canvas(display.width, display.height)
         self._smoother = SmoothedBins(64)
+        self._progress_pulse = ProgressPulse()
+        self._page_transition = PageTransition()
         self._target_bins: tuple[float, ...] | None = None
         self._last_frame_time = monotonic()
         self.measured_fps = 0.0
@@ -89,6 +96,7 @@ class FixedRateRenderer:
         self._last_state: object = object()
         self._last_connected: bool | None = None
         self._last_page_revision = -1
+        self._last_asset_revision = -1
 
     def render_once(self, now: float | None = None) -> None:
         frame_time = monotonic() if now is None else now
@@ -102,22 +110,40 @@ class FixedRateRenderer:
         if not snapshot.connected:
             self._target_bins = None
         bins = self._smoother.update(self._target_bins, delta)
+        media = snapshot.state.media if snapshot.state is not None else None
+        playing = bool(media and media.is_playing)
+        pulse = (
+            self._progress_pulse.update(delta, active=playing) if self.animations_enabled else 1.0
+        )
+        page_revision = self.page.revision
+        self._page_transition.observe(page_revision)
+        transition = self._page_transition.update(delta) if self.animations_enabled else 1.0
+        asset_revision = 0 if self.assets is None else self.assets.revision
         self.page.render(
             self.canvas,
             RenderContext(
                 snapshot=snapshot,
                 fft_bins=bins,
                 measured_fps=self.measured_fps,
+                assets=self.assets,
+                progress_pulse=pulse,
+                transition_progress=transition,
+                now_seconds=frame_time,
             ),
             self.theme,
         )
+        if self.animations_enabled and transition < 1.0:
+            cover = int(self.canvas.width * (1.0 - transition))
+            if cover > 0:
+                self.canvas.fill_rect(0, 0, cover, self.canvas.height, self.theme.background)
         write_started = monotonic()
-        page_revision = self.page.revision
         full_update = (
             not self._has_written_frame
             or snapshot.state is not self._last_state
             or snapshot.connected != self._last_connected
             or page_revision != self._last_page_revision
+            or asset_revision != self._last_asset_revision
+            or (self.animations_enabled and self._page_transition.active)
         )
         if full_update:
             self.display.write_frame(self.canvas.frame())
@@ -137,6 +163,7 @@ class FixedRateRenderer:
         self._last_state = snapshot.state
         self._last_connected = snapshot.connected
         self._last_page_revision = page_revision
+        self._last_asset_revision = asset_revision
 
     async def run(self, stop_event: asyncio.Event | None = None) -> None:
         stop = stop_event or asyncio.Event()

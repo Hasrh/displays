@@ -1,3 +1,5 @@
 """Presentation asset service and packaged-resource boundary."""
 
-__all__: list[str] = []
+from pi.assets.cache import AssetCache
+
+__all__ = ["AssetCache"]

@@ -371,6 +371,8 @@ class AssetMetadata:
     sha256: str
     media_type: str
     byte_length: int
+    width: int | None = None
+    height: int | None = None
 
     @classmethod
     def from_dict(cls, value: object) -> AssetMetadata:
@@ -379,8 +381,8 @@ class AssetMetadata:
         if len(sha256) != 64 or any(character not in "0123456789abcdef" for character in sha256):
             raise ValueError("asset.sha256 must be 64 lowercase hexadecimal characters")
         media_type = _string(data.get("media_type"), "asset.media_type").lower()
-        if media_type not in {"image/jpeg", "image/webp"}:
-            raise ValueError("asset.media_type must be image/jpeg or image/webp")
+        if media_type not in {"image/jpeg", "image/webp", "image/rgb565"}:
+            raise ValueError("asset.media_type must be image/jpeg, image/webp, or image/rgb565")
         byte_length = data.get("byte_length")
         if (
             isinstance(byte_length, bool)
@@ -388,17 +390,45 @@ class AssetMetadata:
             or not 0 <= byte_length <= MAX_ASSET_BYTES
         ):
             raise ValueError(f"asset.byte_length must be between 0 and {MAX_ASSET_BYTES}")
+        width = data.get("width")
+        height = data.get("height")
+        parsed_width: int | None = None
+        parsed_height: int | None = None
+        if width is not None or height is not None:
+            if (
+                isinstance(width, bool)
+                or not isinstance(width, int)
+                or width <= 0
+                or isinstance(height, bool)
+                or not isinstance(height, int)
+                or height <= 0
+            ):
+                raise ValueError("asset.width and asset.height must be positive integers")
+            parsed_width = width
+            parsed_height = height
+        if media_type == "image/rgb565":
+            if parsed_width is None or parsed_height is None:
+                raise ValueError("image/rgb565 assets require width and height")
+            if byte_length != parsed_width * parsed_height * 2:
+                raise ValueError("image/rgb565 byte_length must equal width*height*2")
         return cls(
             asset_id=_string(data.get("asset_id"), "asset.asset_id"),
             sha256=sha256,
             media_type=media_type,
             byte_length=byte_length,
+            width=parsed_width,
+            height=parsed_height,
         )
 
     def to_dict(self) -> JsonObject:
-        return {
+        document: JsonObject = {
             "asset_id": self.asset_id,
             "sha256": self.sha256,
             "media_type": self.media_type,
             "byte_length": self.byte_length,
         }
+        if self.width is not None:
+            document["width"] = self.width
+        if self.height is not None:
+            document["height"] = self.height
+        return document

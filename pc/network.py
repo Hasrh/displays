@@ -14,11 +14,13 @@ from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.typing import Subprotocol
 
+from pc.assets import PreparedAlbumArt
 from pc.config import HostConfig
 from pc.state import SyntheticStateSource
-from shared.constants import MAX_JSON_MESSAGE_BYTES, MessageType
+from shared.constants import MAX_ASSET_BYTES, MAX_JSON_MESSAGE_BYTES, MessageType
 from shared.models import DisplayState, FFTFrame
 from shared.protocol import (
+    AssetManifestPayload,
     CommandPayload,
     CommandResultPayload,
     Envelope,
@@ -31,6 +33,7 @@ from shared.protocol import (
     StateSnapshotPayload,
     WelcomePayload,
     decode_envelope,
+    encode_asset_frame,
     encode_envelope,
     negotiate_version,
     new_envelope,
@@ -44,6 +47,8 @@ class StateSource(Protocol):
     def state_at(self, elapsed_seconds: float) -> DisplayState: ...
 
     def fft_at(self, elapsed_seconds: float, captured_at: str) -> FFTFrame: ...
+
+    def take_asset(self) -> PreparedAlbumArt | None: ...
 
 
 def _utc_now() -> str:
@@ -74,6 +79,10 @@ class OutboundSession:
             await self.connection.send(encode_envelope(envelope).decode("utf-8"))
             return envelope
 
+    async def send_bytes(self, payload: bytes) -> None:
+        async with self._lock:
+            await self.connection.send(payload)
+
 
 class WebSocketHost:
     """One-host, multiple-renderer WebSocket service."""
@@ -103,7 +112,7 @@ class WebSocketHost:
             subprotocols=[SUBPROTOCOL],
             compression=None,
             ping_interval=None,
-            max_size=MAX_JSON_MESSAGE_BYTES,
+            max_size=MAX_ASSET_BYTES + MAX_JSON_MESSAGE_BYTES,
             max_queue=4,
         ) as server:
             LOGGER.info(
@@ -245,6 +254,13 @@ class WebSocketHost:
                     ),
                 )
                 next_state = now + 0.5
+            asset = self._state_source.take_asset()
+            if asset is not None:
+                await sender.send(
+                    MessageType.ASSET_MANIFEST,
+                    AssetManifestPayload(assets=(asset.metadata,)),
+                )
+                await sender.send_bytes(encode_asset_frame(asset.metadata, asset.data))
             if now >= next_fft:
                 await sender.send(
                     MessageType.FFT_FRAME,

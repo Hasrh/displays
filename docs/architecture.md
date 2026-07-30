@@ -63,7 +63,7 @@ touch gestures only emit navigation actions to that manager.
 6. Pages/navigation; calibrated touch remains deferred.
 7. Real Windows CPU, RAM, network, and optional LibreHardwareMonitor GPU collectors.
 8. Real Windows GSMTC media metadata, WASAPI loopback FFT, and the retro media visualizer.
-9. Album art transfer/caching, themes, and animations.
+9. Album art transfer/caching, selectable themes, and lightweight animations.
 10. Weather, touch navigation, and playback commands remain paused.
 
 The LCDWiki MPI3501 display path is verified: ILI9486 via fbtft, the

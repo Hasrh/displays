@@ -243,6 +243,33 @@ def test_asset_frame_round_trip_and_tamper_detection() -> None:
     assert error.value.code == "ASSET_HASH_MISMATCH"
 
 
+def test_rgb565_asset_metadata_requires_dimensions() -> None:
+    data = b"\x00\xf8" * 4
+    metadata = AssetMetadata(
+        asset_id="album-rgb565",
+        sha256=hashlib.sha256(data).hexdigest(),
+        media_type="image/rgb565",
+        byte_length=len(data),
+        width=2,
+        height=2,
+    )
+    encoded = encode_asset_frame(metadata, data)
+    decoded = decode_asset_frame(encoded)
+    assert decoded.metadata.width == 2
+    assert decoded.metadata.height == 2
+    assert decoded.metadata.media_type == "image/rgb565"
+
+    with pytest.raises(ValueError, match="require width and height"):
+        AssetMetadata.from_dict(
+            {
+                "asset_id": "bad",
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "media_type": "image/rgb565",
+                "byte_length": len(data),
+            }
+        )
+
+
 def test_rejects_invalid_metric_percentage() -> None:
     with pytest.raises(ValueError, match="must not exceed 100"):
         SystemMetrics.from_dict({"cpu_usage_percent": 101})

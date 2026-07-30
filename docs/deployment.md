@@ -22,9 +22,9 @@ $env:DESKTOP_DISPLAY_TOKEN = "replace-with-a-long-random-secret"
 python -m pc.main --config config/host.toml
 ```
 
-The host binds only the configured Wi-Fi address. CPU, RAM, network, and media-session metrics
-come from Windows; FFT and weather are still synthetic. Permit inbound TCP 8765 on the Windows
-Private firewall profile.
+The host binds only the configured Wi-Fi address. CPU, RAM, network, media-session metrics,
+optional album art, and WASAPI loopback FFT come from Windows; weather remains synthetic.
+Permit inbound TCP 8765 on the Windows Private firewall profile.
 
 ```powershell
 New-NetFirewallRule `
@@ -70,11 +70,14 @@ keep media collection enabled in `config/host.toml`:
 [collectors.media]
 enabled = true
 interval_seconds = 1.0
+album_art_enabled = true
 ```
 
-When no session is active the display shows an empty idle media state rather than synthetic
-track data. Volume is not exposed by GSMTC and remains unset. Playback command execution from
-the Pi is paused.
+When album art is enabled, the host resizes GSMTC thumbnails to 152×152 RGB565 and streams
+them as binary assets after `asset_manifest`. The Pi keeps a bounded LRU cache and blits art
+on the Now Playing page. When no session is active the display shows an empty idle media
+state rather than synthetic track data. Volume is not exposed by GSMTC and remains unset.
+Playback command execution from the Pi is paused.
 
 ### Enable WASAPI loopback FFT
 
@@ -153,16 +156,23 @@ alongside smoothed FFT bars. It renders directly into RGB565 and writes full fra
 `/dev/fb1`; network tasks never block the fixed-rate render loop.
 
 Four pages are available: `now_playing`, `visualizer`, `system`, and `clock`. Configure the
-initial page and automatic navigation in `config/pi.toml`:
+initial page, automatic navigation, theme, and animations in `config/pi.toml`:
 
 ```toml
 [navigation]
 initial_page = "system"
 auto_cycle_seconds = 10
+
+[presentation]
+theme = "dark"
+animations_enabled = true
+asset_cache_capacity = 8
 ```
 
-Set `auto_cycle_seconds = 0` to keep one page visible. Touch gestures will call the same page
-manager later; no page contains touch or hardware logic.
+Supported themes are `dark`, `cyberpunk`, `minimal`, and `retro`. Animations add a short page
+wipe and a progress-bar pulse on Now Playing. Set `auto_cycle_seconds = 0` to keep one page
+visible. Touch gestures will call the same page manager later; no page contains touch or
+hardware logic.
 
 Start with `display.target_fps = 10` on the Pi Zero W. Renderer logs report measured FPS and
 missed deadlines every five seconds, with separate `render_ms` and `write_ms` averages.

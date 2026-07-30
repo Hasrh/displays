@@ -11,6 +11,8 @@ from datetime import UTC, datetime
 from time import monotonic
 from typing import Protocol
 
+from pc.assets import PreparedAlbumArt, prepare_album_art
+from pc.collectors.media import MediaSample
 from pc.collectors.system import SystemSample
 from shared.constants import FFT_BIN_COUNT
 from shared.models import (
@@ -32,7 +34,7 @@ class SystemCollector(Protocol):
 
 
 class MediaCollector(Protocol):
-    async def sample(self) -> MediaState: ...
+    async def sample(self) -> MediaSample: ...
 
 
 class FftCollector(Protocol):
@@ -111,6 +113,9 @@ class SyntheticStateSource:
         )
         return FFTFrame(captured_at=captured_at, bins=bins)
 
+    def take_asset(self) -> PreparedAlbumArt | None:
+        return None
+
 
 class HostStateSource(SyntheticStateSource):
     """Overlays live collectors onto unfinished synthetic sources."""
@@ -123,16 +128,21 @@ class HostStateSource(SyntheticStateSource):
         media_collector: MediaCollector | None = None,
         media_interval_seconds: float = 1.0,
         fft_collector: FftCollector | None = None,
+        album_art_enabled: bool = True,
     ) -> None:
         self._system_collector = system_collector
         self._system_interval_seconds = system_interval_seconds
         self._media_collector = media_collector
         self._media_interval_seconds = media_interval_seconds
         self._fft_collector = fft_collector
+        self._album_art_enabled = album_art_enabled
         self._latest_system: SystemSample | None = None
         self._latest_media: MediaState | None = None
         self._system_healthy: bool | None = None
         self._media_healthy: bool | None = None
+        self._prepared_art: PreparedAlbumArt | None = None
+        self._pending_art: PreparedAlbumArt | None = None
+        self._last_thumbnail_id: str | None = None
 
     async def initialize(self) -> None:
         if self._fft_collector is not None:
@@ -203,6 +213,11 @@ class HostStateSource(SyntheticStateSource):
                 return frame
         return super().fft_at(elapsed_seconds, captured_at)
 
+    def take_asset(self) -> PreparedAlbumArt | None:
+        asset = self._pending_art
+        self._pending_art = None
+        return asset
+
     async def _poll(
         self,
         collect: Callable[[], Awaitable[None]],
@@ -242,4 +257,31 @@ class HostStateSource(SyntheticStateSource):
         if self._media_healthy is not True:
             LOGGER.info("Windows media session collector is active")
         self._media_healthy = True
-        self._latest_media = sample
+        self._latest_media = sample.media
+        await self._maybe_prepare_album_art(sample)
+
+    async def _maybe_prepare_album_art(self, sample: MediaSample) -> None:
+        if not self._album_art_enabled:
+            return
+        thumbnail_id = sample.media.album_art_id
+        if thumbnail_id is None or sample.thumbnail_bytes is None:
+            return
+        if thumbnail_id == self._last_thumbnail_id and self._prepared_art is not None:
+            prepared_id = self._prepared_art.metadata.asset_id
+            if sample.media.album_art_id != prepared_id:
+                self._latest_media = replace(sample.media, album_art_id=prepared_id)
+            return
+        try:
+            prepared = await asyncio.to_thread(prepare_album_art, sample.thumbnail_bytes)
+        except Exception:
+            LOGGER.exception("Album art preparation failed")
+            return
+        self._prepared_art = prepared
+        self._pending_art = prepared
+        self._last_thumbnail_id = thumbnail_id
+        self._latest_media = replace(sample.media, album_art_id=prepared.metadata.asset_id)
+        LOGGER.info(
+            "Prepared album art id=%s bytes=%d",
+            prepared.metadata.asset_id,
+            prepared.metadata.byte_length,
+        )

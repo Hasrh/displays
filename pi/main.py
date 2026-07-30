@@ -7,6 +7,7 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from pi.assets import AssetCache
 from pi.config import ConfigError, PiConfig, load_config
 from pi.display import DisplayBackend, DisplayError, FramebufferBackend, HeadlessBackend
 from pi.navigation import PageManager
@@ -14,6 +15,7 @@ from pi.network import PiNetworkClient
 from pi.pages import ClockPage, NowPlayingPage, SystemVisualizerPage, VisualizerPage
 from pi.renderer import FixedRateRenderer, color_bars_rgb565
 from pi.state import LatestStateStore
+from pi.themes import get_theme
 
 LOGGER = logging.getLogger(__name__)
 
@@ -75,7 +77,8 @@ async def monitor_network(store: LatestStateStore) -> None:
 
 async def run_network_test(config: PiConfig, auth_token: str) -> None:
     store = LatestStateStore()
-    client = PiNetworkClient(config, auth_token, store)
+    assets = AssetCache(capacity=config.asset_cache_capacity)
+    client = PiNetworkClient(config, auth_token, store, assets=assets)
     async with asyncio.TaskGroup() as tasks:
         tasks.create_task(client.run())
         tasks.create_task(monitor_network(store))
@@ -83,7 +86,8 @@ async def run_network_test(config: PiConfig, auth_token: str) -> None:
 
 async def run_display_application(config: PiConfig, auth_token: str) -> None:
     store = LatestStateStore()
-    client = PiNetworkClient(config, auth_token, store)
+    assets = AssetCache(capacity=config.asset_cache_capacity)
+    client = PiNetworkClient(config, auth_token, store, assets=assets)
     display = build_display(
         config.display_backend,
         config.framebuffer_device,
@@ -100,7 +104,15 @@ async def run_display_application(config: PiConfig, auth_token: str) -> None:
         initial_page=config.initial_page,
         auto_cycle_seconds=config.auto_cycle_seconds,
     )
-    renderer = FixedRateRenderer(display, store, config.target_fps, page=pages)
+    renderer = FixedRateRenderer(
+        display,
+        store,
+        config.target_fps,
+        page=pages,
+        theme=get_theme(config.theme),
+        assets=assets,
+        animations_enabled=config.animations_enabled,
+    )
     async with asyncio.TaskGroup() as tasks:
         tasks.create_task(client.run())
         tasks.create_task(renderer.run())

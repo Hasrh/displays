@@ -17,6 +17,13 @@ initial_page = "system"
 # Set to 0 to disable automatic cycling until touch navigation is enabled.
 auto_cycle_seconds = 10
 
+[presentation]
+# Supported themes: dark, cyberpunk, minimal, retro.
+theme = "dark"
+animations_enabled = true
+# Bound the number of host-prepared RGB565 album-art frames retained on the Pi.
+asset_cache_capacity = 8
+
 [display]
 # Verified on LCDWiki MPI3501 with dtoverlay=tft35a:rotate=90.
 backend = "framebuffer"

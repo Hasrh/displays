@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from pc.collectors.media import (
+    MediaSample,
     MediaSessionSnapshot,
     WindowsMediaSessionCollector,
     datetime_from_winrt,
@@ -26,6 +27,7 @@ def test_media_state_from_snapshot_idle() -> None:
     assert state.is_playing is False
     assert state.position_seconds == 0.0
     assert state.volume_percent is None
+    assert state.album_art_id is None
 
 
 def test_interpolate_position_advances_while_playing() -> None:
@@ -64,6 +66,7 @@ def test_media_collector_maps_backend_snapshot() -> None:
         duration_seconds=259.0,
         last_updated=datetime(2026, 7, 30, 6, 0, 0, tzinfo=UTC),
         source_app_id="Spotify.exe",
+        thumbnail_bytes=b"\xff\xd8fake-jpeg",
     )
 
     class Backend:
@@ -74,13 +77,16 @@ def test_media_collector_maps_backend_snapshot() -> None:
         Backend(),
         clock=lambda: datetime(2026, 7, 30, 6, 0, 4, tzinfo=UTC),
     )
-    state = asyncio.run(collector.sample())
-    assert state.title == "Smile.mp3"
-    assert state.artist == "Demo Artist"
-    assert state.album == "Demo Album"
-    assert state.is_playing is True
-    assert state.position_seconds == 30.0
-    assert state.duration_seconds == 259.0
+    sample = asyncio.run(collector.sample())
+    assert isinstance(sample, MediaSample)
+    assert sample.media.title == "Smile.mp3"
+    assert sample.media.artist == "Demo Artist"
+    assert sample.media.album == "Demo Album"
+    assert sample.media.is_playing is True
+    assert sample.media.position_seconds == 30.0
+    assert sample.media.duration_seconds == 259.0
+    assert sample.media.album_art_id is not None
+    assert sample.thumbnail_bytes == b"\xff\xd8fake-jpeg"
 
 
 def test_host_state_source_overlays_media_and_system() -> None:
@@ -103,8 +109,8 @@ def test_host_state_source_overlays_media_and_system() -> None:
     )
 
     class MediaBackend:
-        async def sample(self):
-            return media
+        async def sample(self) -> MediaSample:
+            return MediaSample(media=media)
 
     source = HostStateSource(
         system_collector=SimpleNamespace(sample=lambda: system),

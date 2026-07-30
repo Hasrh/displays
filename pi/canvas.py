@@ -113,5 +113,29 @@ class RGB565Canvas:
         region = self._pixels[top:bottom, left:right]
         region[clipped_mask] = pack_rgb565_value(color)
 
+    def blit_rgb565(
+        self,
+        x: int,
+        y: int,
+        pixels: NDArray[np.uint16],
+    ) -> None:
+        """Copy a little-endian RGB565 image into the canvas with clipping."""
+
+        if pixels.ndim != 2:
+            raise ValueError("RGB565 blit source must be a 2D array")
+        height, width = pixels.shape
+        left = max(0, x)
+        top = max(0, y)
+        right = min(self.width, x + width)
+        bottom = min(self.height, y + height)
+        if right <= left or bottom <= top:
+            return
+        source_left = left - x
+        source_top = top - y
+        self._pixels[top:bottom, left:right] = pixels[
+            source_top : source_top + (bottom - top),
+            source_left : source_left + (right - left),
+        ]
+
     def frame(self) -> memoryview:
         return self._pixels.data.cast("B")

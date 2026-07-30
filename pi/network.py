@@ -11,6 +11,7 @@ from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, InvalidHandshake, InvalidURI
 from websockets.typing import Subprotocol
 
+from pi.assets import AssetCache
 from pi.config import PiConfig
 from pi.state import LatestStateStore
 from shared.constants import MAX_ASSET_BYTES, MAX_JSON_MESSAGE_BYTES, PROTOCOL_VERSION, MessageType
@@ -35,12 +36,19 @@ SUBPROTOCOL = Subprotocol("desktop-display.v1")
 class PiNetworkClient:
     """Maintains one authenticated connection and latest-value state."""
 
-    def __init__(self, config: PiConfig, auth_token: str, store: LatestStateStore) -> None:
+    def __init__(
+        self,
+        config: PiConfig,
+        auth_token: str,
+        store: LatestStateStore,
+        assets: AssetCache | None = None,
+    ) -> None:
         if len(auth_token) < 16:
             raise ValueError("authentication token must contain at least 16 characters")
         self.config = config
         self._auth_token = auth_token
         self.store = store
+        self.assets = assets
         self._outbound_sequence = 0
         self._send_lock = asyncio.Lock()
 
@@ -106,11 +114,18 @@ class PiNetworkClient:
                     return
                 if isinstance(raw, bytes):
                     asset = decode_asset_frame(raw)
-                    LOGGER.info(
-                        "Received asset id=%s bytes=%d",
-                        asset.metadata.asset_id,
-                        len(asset.data),
-                    )
+                    if self.assets is not None and self.assets.store(asset):
+                        LOGGER.info(
+                            "Cached album art id=%s bytes=%d",
+                            asset.metadata.asset_id,
+                            len(asset.data),
+                        )
+                    else:
+                        LOGGER.info(
+                            "Received asset id=%s bytes=%d",
+                            asset.metadata.asset_id,
+                            len(asset.data),
+                        )
                     continue
                 envelope = decode_envelope(raw)
                 if envelope.type is MessageType.PING and isinstance(envelope.payload, PingPayload):

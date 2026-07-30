@@ -1,6 +1,7 @@
 """Windows-side telemetry collectors."""
 
 from pc.collectors.media import (
+    MediaSample,
     MediaSessionSnapshot,
     WindowsMediaSessionCollector,
     interpolate_position,
@@ -15,6 +16,7 @@ from pc.collectors.system import (
 
 __all__ = [
     "LibreHardwareMonitorClient",
+    "MediaSample",
     "MediaSessionSnapshot",
     "SystemSample",
     "WindowsMediaSessionCollector",

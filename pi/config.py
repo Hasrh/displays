@@ -20,6 +20,9 @@ class PiConfig:
     handshake_timeout_seconds: int
     initial_page: str
     auto_cycle_seconds: float
+    theme: str
+    animations_enabled: bool
+    asset_cache_capacity: int
     width: int
     height: int
     orientation: int
@@ -95,6 +98,7 @@ def load_config(path: Path) -> PiConfig:
     application = _table(document.get("application"), "application")
     network = _table(document.get("network", {}), "network")
     navigation = _table(document.get("navigation", {}), "navigation")
+    presentation = _table(document.get("presentation", {}), "presentation")
 
     orientation = _integer(display, "orientation", "display", 0, 270)
     if orientation not in {0, 90, 180, 270}:
@@ -167,6 +171,20 @@ def load_config(path: Path) -> PiConfig:
         3600.0,
         default=10.0,
     )
+    theme = presentation.get("theme", "dark")
+    if not isinstance(theme, str) or theme not in {"dark", "cyberpunk", "minimal", "retro"}:
+        raise ConfigError("presentation.theme must be dark, cyberpunk, minimal, or retro")
+    animations_enabled = presentation.get("animations_enabled", True)
+    if not isinstance(animations_enabled, bool):
+        raise ConfigError("presentation.animations_enabled must be true or false")
+    asset_cache_capacity = _integer(
+        presentation,
+        "asset_cache_capacity",
+        "presentation",
+        1,
+        32,
+        default=8,
+    )
 
     return PiConfig(
         host_url=_string(host, "url", "host"),
@@ -184,6 +202,9 @@ def load_config(path: Path) -> PiConfig:
         ),
         initial_page=initial_page,
         auto_cycle_seconds=auto_cycle_seconds,
+        theme=theme,
+        animations_enabled=animations_enabled,
+        asset_cache_capacity=asset_cache_capacity,
         width=_integer(display, "width", "display", 1, 8192),
         height=_integer(display, "height", "display", 1, 8192),
         orientation=orientation,

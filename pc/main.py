@@ -65,6 +65,7 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
             media_collector=media_collector,
             media_interval_seconds=config.media_interval_seconds,
             fft_collector=fft_collector,
+            album_art_enabled=config.album_art_enabled,
         )
         await live_source.initialize()
         collector_task = asyncio.create_task(live_source.run(), name="host-collectors")

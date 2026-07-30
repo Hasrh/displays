@@ -25,6 +25,7 @@ class HostConfig:
     hardware_monitor_timeout_seconds: float
     media_collector_enabled: bool
     media_interval_seconds: float
+    album_art_enabled: bool
     fft_collector_enabled: bool
     fft_size: int
 
@@ -189,6 +190,12 @@ def load_config(path: Path) -> HostConfig:
             0.25,
             60.0,
             default=1.0,
+        ),
+        album_art_enabled=_boolean(
+            media_collector,
+            "album_art_enabled",
+            "collectors.media",
+            default=True,
         ),
         fft_collector_enabled=_boolean(
             fft_collector,

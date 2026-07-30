@@ -61,12 +61,17 @@ Album art uses a versioned binary WebSocket frame:
 2. One-byte frame version: `1`
 3. Four-byte big-endian JSON metadata-header length
 4. UTF-8 JSON `AssetMetadata`
-5. JPEG or WebP bytes
+5. Image payload bytes
 
-The metadata contains `asset_id`, lowercase SHA-256, MIME type, and byte length. Encoding
-and decoding verify the declared length, 2 MiB limit, media type, frame version, and SHA-256
-using constant-time digest comparison. Assets are sent only on hash change and will be stored
-in a small Pi LRU cache.
+Supported media types are `image/jpeg`, `image/webp`, and host-prepared `image/rgb565`.
+RGB565 assets require `width` and `height`, and `byte_length` must equal `width * height * 2`.
+The Windows host currently resizes GSMTC thumbnails to 152×152 RGB565 before transfer so the
+Pi avoids JPEG decode.
+
+The metadata contains `asset_id`, lowercase SHA-256, MIME type, byte length, and optional
+dimensions. Encoding and decoding verify the declared length, 2 MiB limit, media type, frame
+version, and SHA-256 using constant-time digest comparison. Assets are sent only on hash
+change and are stored in a small Pi LRU cache (`presentation.asset_cache_capacity`).
 
 ## Cadence
 

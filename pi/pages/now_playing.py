@@ -1,5 +1,6 @@
 """Now Playing page."""
 
+from pi.animations import scale_rgb
 from pi.canvas import RGB565Canvas
 from pi.pages.base import RenderContext
 from pi.pages.components import draw_header, duration_text
@@ -9,8 +10,8 @@ from pi.themes import Theme
 class NowPlayingPage:
     page_id = "now_playing"
     revision = 0
-    continuous_updates = False
-    partial_update_row = 300
+    continuous_updates = True
+    partial_update_row = 230
 
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
         canvas.clear(theme.background)
@@ -21,7 +22,8 @@ class NowPlayingPage:
             theme=theme,
         )
         media = context.snapshot.state.media if context.snapshot.state else None
-        self._album_placeholder(canvas, theme)
+        art_id = media.album_art_id if media else None
+        self._album_art(canvas, context, theme, art_id)
 
         title = media.title if media else "WAITING FOR MEDIA"
         artist = media.artist if media else "NO HOST STATE"
@@ -42,8 +44,12 @@ class NowPlayingPage:
         position = media.position_seconds if media else 0.0
         duration = media.duration_seconds if media else 0.0
         progress = position / duration if duration > 0 else 0.0
-        canvas.fill_rect(18, 238, canvas.width - 36, 8, theme.surface_alt)
-        canvas.fill_rect(18, 238, int((canvas.width - 36) * progress), 8, theme.accent)
+        bar_width = canvas.width - 36
+        filled = int(bar_width * progress)
+        canvas.fill_rect(18, 238, bar_width, 8, theme.surface_alt)
+        if filled > 0:
+            accent = scale_rgb(theme.accent, context.progress_pulse if playing else 1.0)
+            canvas.fill_rect(18, 238, filled, 8, accent)
         canvas.draw_text(18, 258, duration_text(position), theme.text_muted)
         remaining = duration_text(duration)
         canvas.draw_text(
@@ -55,8 +61,18 @@ class NowPlayingPage:
         canvas.draw_text(18, 288, "HOST AUTHORITATIVE MEDIA", theme.text_muted)
 
     @staticmethod
-    def _album_placeholder(canvas: RGB565Canvas, theme: Theme) -> None:
+    def _album_art(
+        canvas: RGB565Canvas,
+        context: RenderContext,
+        theme: Theme,
+        art_id: str | None,
+    ) -> None:
         x, y, size = 18, 58, 152
+        pixels = context.album_art(art_id)
+        if pixels is not None:
+            canvas.blit_rgb565(x, y, pixels)
+            canvas.stroke_rect(x, y, size, size, theme.grid, thickness=2)
+            return
         canvas.fill_rect(x, y, size, size, theme.surface)
         canvas.stroke_rect(x, y, size, size, theme.grid, thickness=2)
         for inset, color in (

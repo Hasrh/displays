@@ -10,6 +10,8 @@ verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages s
 configurable navigation manager. Windows CPU, RAM, network telemetry, and Global System Media
 Transport Controls metadata are live, with per-GPU telemetry from an optional local
 LibreHardwareMonitor endpoint. Live WASAPI loopback FFT drives the visualizer when available.
+Host-prepared RGB565 album art is transferred and cached on the Pi. Themes (`dark`,
+`cyberpunk`, `minimal`, `retro`) and lightweight progress/page animations are configurable.
 Weather, touch navigation, and playback command execution are paused.
 
 ## Requirements

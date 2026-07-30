@@ -2,14 +2,14 @@
 
 import pytest
 
-from pi.animations import SmoothedBins
+from pi.animations import PageTransition, ProgressPulse, SmoothedBins, scale_rgb
 from pi.canvas import RGB565Canvas, pack_rgb565
 from pi.display import HeadlessBackend
 from pi.pages import ClockPage, NowPlayingPage, SystemVisualizerPage, VisualizerPage
 from pi.pages.base import Page, RenderContext
 from pi.renderer import FixedRateRenderer
 from pi.state import LatestStateStore
-from pi.themes import DARK_THEME
+from pi.themes import CYBERPUNK_THEME, DARK_THEME, get_theme
 from shared.constants import MessageType
 from shared.models import DisplayState, FFTFrame, MediaState, SystemMetrics
 from shared.protocol import StateSnapshotPayload, new_envelope
@@ -33,6 +33,29 @@ def test_smoothing_uses_faster_attack_than_release() -> None:
     released = smoother.update((0.0,), 0.05)[0]
     assert attacked > 0.5
     assert released > 0.5
+
+
+def test_progress_pulse_stays_idle_when_paused() -> None:
+    pulse = ProgressPulse(frequency_hz=1.0, amplitude=0.2)
+    assert pulse.update(0.1, active=False) == 1.0
+    assert 0.8 <= pulse.update(0.1, active=True) <= 1.0
+
+
+def test_page_transition_eases_out() -> None:
+    transition = PageTransition(duration_seconds=0.2)
+    transition.observe(0)
+    transition.observe(1)
+    assert transition.active
+    assert transition.update(0.05) < 1.0
+    assert transition.update(0.2) == 1.0
+    assert not transition.active
+
+
+def test_theme_lookup() -> None:
+    assert get_theme("cyberpunk") is CYBERPUNK_THEME
+    assert scale_rgb((100, 100, 100), 0.5) == (50, 50, 50)
+    with pytest.raises(ValueError, match="unknown theme"):
+        get_theme("neon")
 
 
 def test_renderer_writes_live_dashboard_to_headless_backend() -> None:
@@ -71,7 +94,7 @@ def test_renderer_writes_live_dashboard_to_headless_backend() -> None:
     )
     display = HeadlessBackend(480, 320)
     display.open()
-    renderer = FixedRateRenderer(display, store, 10)
+    renderer = FixedRateRenderer(display, store, 10, animations_enabled=False)
     renderer.render_once()
     assert renderer.last_write_was_full
     renderer.render_once()
