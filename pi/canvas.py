@@ -80,6 +80,49 @@ class RGB565Canvas:
         self.fill_rect(x, y, thickness, height, color)
         self.fill_rect(x + width - thickness, y, thickness, height, color)
 
+    def stroke_round_rect(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        color: RGB,
+        *,
+        radius: int = 8,
+        thickness: int = 1,
+    ) -> None:
+        """Approximate a rounded rectangle with clipped corner strokes."""
+
+        if thickness <= 0 or width <= 0 or height <= 0:
+            return
+        corner = max(0, min(radius, width // 2, height // 2))
+        if corner == 0:
+            self.stroke_rect(x, y, width, height, color, thickness=thickness)
+            return
+        self.fill_rect(x + corner, y, width - corner * 2, thickness, color)
+        self.fill_rect(x + corner, y + height - thickness, width - corner * 2, thickness, color)
+        self.fill_rect(x, y + corner, thickness, height - corner * 2, color)
+        self.fill_rect(x + width - thickness, y + corner, thickness, height - corner * 2, color)
+        centers = (
+            (x + corner, y + corner, -1, -1),
+            (x + width - corner - 1, y + corner, 1, -1),
+            (x + corner, y + height - corner - 1, -1, 1),
+            (x + width - corner - 1, y + height - corner - 1, 1, 1),
+        )
+        outer = corner * corner
+        inner = max(0, corner - thickness) ** 2
+        packed = pack_rgb565_value(color)
+        for center_x, center_y, sign_x, sign_y in centers:
+            for row in range(corner):
+                for column in range(corner):
+                    distance = row * row + column * column
+                    if not inner < distance <= outer:
+                        continue
+                    px = center_x + sign_x * column
+                    py = center_y + sign_y * row
+                    if 0 <= px < self.width and 0 <= py < self.height:
+                        self._pixels[py, px] = packed
+
     @staticmethod
     def text_width(text: str, scale: int = 1) -> int:
         if scale <= 0:

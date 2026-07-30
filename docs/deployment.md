@@ -151,9 +151,9 @@ export DESKTOP_DISPLAY_TOKEN="replace-with-the-same-long-random-secret"
 python3 -m pi.main --config config/pi.toml --run-display
 ```
 
-The system page displays CPU, RAM, network throughput, and two separately named GPU devices
-alongside smoothed FFT bars. It renders directly into RGB565 and writes full frames to
-`/dev/fb1`; network tasks never block the fixed-rate render loop.
+The system page displays a 2x2 CPU / MEMORY / GPU / CASE dashboard with rounded
+colored panels. Values come from Windows psutil plus optional LibreHardwareMonitor
+CPU/GPU/board sensors. FFT visualization remains on the dedicated visualizer page.
 
 Four pages are available: `now_playing`, `visualizer`, `system`, and `clock`. Configure the
 initial page, automatic navigation, theme, and animations in `config/pi.toml`:

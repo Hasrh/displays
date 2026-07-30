@@ -121,6 +121,7 @@ class GpuMetrics:
     usage_percent: float | None = None
     vram_usage_percent: float | None = None
     temperature_c: float | None = None
+    fan_percent: float | None = None
 
     @classmethod
     def from_dict(cls, value: object) -> GpuMetrics:
@@ -132,6 +133,7 @@ class GpuMetrics:
                 data.get("vram_usage_percent"), "gpu.vram_usage_percent"
             ),
             temperature_c=_optional_number(data.get("temperature_c"), "gpu.temperature_c"),
+            fan_percent=_optional_percentage(data.get("fan_percent"), "gpu.fan_percent"),
         )
 
     def to_dict(self) -> JsonObject:
@@ -140,6 +142,7 @@ class GpuMetrics:
             "usage_percent": self.usage_percent,
             "vram_usage_percent": self.vram_usage_percent,
             "temperature_c": self.temperature_c,
+            "fan_percent": self.fan_percent,
         }
 
 
@@ -151,6 +154,11 @@ class SystemMetrics:
     vram_usage_percent: float | None = None
     cpu_temperature_c: float | None = None
     gpu_temperature_c: float | None = None
+    ram_used_mb: float | None = None
+    disk_used_mb: float | None = None
+    cpu_fan_rpm: float | None = None
+    case_fan_rpm: float | None = None
+    case_temperature_c: float | None = None
     gpus: tuple[GpuMetrics, ...] = ()
 
     @classmethod
@@ -178,6 +186,21 @@ class SystemMetrics:
             gpu_temperature_c=_optional_number(
                 data.get("gpu_temperature_c"), "system.gpu_temperature_c"
             ),
+            ram_used_mb=_optional_number(
+                data.get("ram_used_mb"), "system.ram_used_mb", minimum=0.0
+            ),
+            disk_used_mb=_optional_number(
+                data.get("disk_used_mb"), "system.disk_used_mb", minimum=0.0
+            ),
+            cpu_fan_rpm=_optional_number(
+                data.get("cpu_fan_rpm"), "system.cpu_fan_rpm", minimum=0.0
+            ),
+            case_fan_rpm=_optional_number(
+                data.get("case_fan_rpm"), "system.case_fan_rpm", minimum=0.0
+            ),
+            case_temperature_c=_optional_number(
+                data.get("case_temperature_c"), "system.case_temperature_c"
+            ),
             gpus=tuple(GpuMetrics.from_dict(item) for item in raw_gpus),
         )
 
@@ -189,6 +212,11 @@ class SystemMetrics:
             "vram_usage_percent": self.vram_usage_percent,
             "cpu_temperature_c": self.cpu_temperature_c,
             "gpu_temperature_c": self.gpu_temperature_c,
+            "ram_used_mb": self.ram_used_mb,
+            "disk_used_mb": self.disk_used_mb,
+            "cpu_fan_rpm": self.cpu_fan_rpm,
+            "case_fan_rpm": self.case_fan_rpm,
+            "case_temperature_c": self.case_temperature_c,
             "gpus": [gpu.to_dict() for gpu in self.gpus],
         }
 

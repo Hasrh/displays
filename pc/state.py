@@ -69,14 +69,23 @@ class SyntheticStateSource:
                 vram_usage_percent=35.0,
                 cpu_temperature_c=48.0 + wave * 8.0,
                 gpu_temperature_c=52.0 + wave * 7.0,
+                ram_used_mb=3204.0 + wave * 200.0,
+                disk_used_mb=980.0,
+                cpu_fan_rpm=800.0 + wave * 200.0,
+                case_fan_rpm=900.0 + wave * 80.0,
+                case_temperature_c=34.0 + wave * 2.0,
                 gpus=(
                     GpuMetrics(
                         name="SYNTHETIC INTEGRATED GPU",
                         usage_percent=12.0 + wave * 25.0,
+                        temperature_c=45.0 + wave * 5.0,
+                        fan_percent=35.0 + wave * 20.0,
                     ),
                     GpuMetrics(
                         name="SYNTHETIC DISCRETE GPU",
                         usage_percent=20.0 + (1.0 - wave) * 50.0,
+                        temperature_c=52.0 + wave * 7.0,
+                        fan_percent=50.0 + wave * 25.0,
                     ),
                 ),
             ),

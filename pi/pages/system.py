@@ -1,139 +1,161 @@
-"""Combined system dashboard and FFT transport-validation page."""
+"""Host-authoritative PC status dashboard."""
 
 from __future__ import annotations
 
 from pi.canvas import RGB565Canvas
 from pi.pages.base import RenderContext
-from pi.pages.components import draw_header
 from pi.themes import RGB, Theme
+
+CPU_COLOR: RGB = (255, 112, 128)
+MEMORY_COLOR: RGB = (64, 220, 96)
+GPU_COLOR: RGB = (255, 200, 48)
+CASE_COLOR: RGB = (64, 220, 255)
+HEADER_COLOR: RGB = (236, 240, 244)
 
 
 class SystemVisualizerPage:
-    """First production page, driven entirely by host-authoritative state."""
+    """2x2 PC status page matching the companion-display dashboard layout."""
 
     page_id = "system"
     revision = 0
-    continuous_updates = True
-    partial_update_row = 190
+    continuous_updates = False
+    partial_update_row = 300
 
     def render(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
-        canvas.clear(theme.background)
-        self._header(canvas, context, theme)
-        self._metrics(canvas, context, theme)
-        self._details(canvas, context, theme)
-        self._visualizer(canvas, context.fft_bins, theme)
+        del theme
+        canvas.clear((0, 0, 0))
+        self._status_bar(canvas, context)
+        self._panels(canvas, context)
 
     @staticmethod
-    def _header(canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
-        draw_header(
-            canvas,
-            "SYSTEM",
-            connected=context.snapshot.connected,
-            theme=theme,
-        )
-
-    def _metrics(self, canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
+    def _status_bar(canvas: RGB565Canvas, context: RenderContext) -> None:
         state = context.snapshot.state
-        system = state.system if state is not None else None
-        gpus = system.gpus if system else ()
-        first_gpu = gpus[0].usage_percent if len(gpus) >= 1 else None
-        second_gpu = gpus[1].usage_percent if len(gpus) >= 2 else None
-        if not gpus and system is not None:
-            first_gpu = system.gpu_usage_percent
-        values = (
-            ("CPU", system.cpu_usage_percent if system else None, "%", 100.0, theme.accent),
-            ("GPU1", first_gpu, "%", 100.0, theme.warning),
-            ("GPU2", second_gpu, "%", 100.0, theme.danger),
-            ("RAM", system.ram_usage_percent if system else None, "%", 100.0, theme.success),
+        weather = state.weather if state else None
+        clock = state.clock if state else None
+        system = state.system if state else None
+
+        left = "--C" if weather is None else f"{weather.temperature_c:.0f}C"
+        center = "--:--"
+        if clock is not None and clock.time_text:
+            parts = clock.time_text.split(":")
+            center = ":".join(parts[:2]) if len(parts) >= 2 else clock.time_text[:5]
+        right = (
+            "--%"
+            if system is None or system.cpu_usage_percent is None
+            else (f"{system.cpu_usage_percent:.0f}%")
         )
+
+        canvas.draw_text(10, 8, left, HEADER_COLOR, scale=2)
+        center_width = canvas.text_width(center, 2)
+        canvas.draw_text((canvas.width - center_width) // 2, 8, center, HEADER_COLOR, scale=2)
+        right_width = canvas.text_width(right, 2)
+        canvas.draw_text(canvas.width - right_width - 10, 8, right, HEADER_COLOR, scale=2)
+
+    def _panels(self, canvas: RGB565Canvas, context: RenderContext) -> None:
+        state = context.snapshot.state
+        system = state.system if state else None
+        gpus = system.gpus if system else ()
+        primary_gpu = gpus[0] if gpus else None
+        gpu_temp = None
+        gpu_fan = None
+        if primary_gpu is not None:
+            gpu_temp = primary_gpu.temperature_c
+            gpu_fan = primary_gpu.fan_percent
+        elif system is not None:
+            gpu_temp = system.gpu_temperature_c
+
+        margin = 8
+        top = 34
         gap = 8
-        margin = 12
-        card_width = (canvas.width - margin * 2 - gap * 3) // 4
-        for index, (label, value, suffix, maximum, color) in enumerate(values):
-            self._metric_card(
-                canvas,
-                margin + index * (card_width + gap),
-                50,
-                card_width,
-                label,
-                value,
-                suffix,
-                maximum,
-                color,
-                theme,
-            )
+        width = (canvas.width - margin * 2 - gap) // 2
+        height = (canvas.height - top - margin - gap - 6) // 2
+        panels = (
+            (
+                margin,
+                top,
+                "CPU",
+                CPU_COLOR,
+                (
+                    ("Usage", self._percent(None if system is None else system.cpu_usage_percent)),
+                    ("Temp", self._temp(None if system is None else system.cpu_temperature_c)),
+                    ("Fan", self._rpm(None if system is None else system.cpu_fan_rpm)),
+                ),
+            ),
+            (
+                margin + width + gap,
+                top,
+                "MEMORY",
+                MEMORY_COLOR,
+                (
+                    ("Ram", self._mb(None if system is None else system.ram_used_mb)),
+                    ("Hdd", self._mb(None if system is None else system.disk_used_mb)),
+                ),
+            ),
+            (
+                margin,
+                top + height + gap,
+                "GPU",
+                GPU_COLOR,
+                (
+                    ("Temp", self._temp(gpu_temp)),
+                    ("Fan", self._percent(gpu_fan)),
+                ),
+            ),
+            (
+                margin + width + gap,
+                top + height + gap,
+                "CASE",
+                CASE_COLOR,
+                (
+                    ("Fan", self._rpm(None if system is None else system.case_fan_rpm)),
+                    ("Temp", self._temp(None if system is None else system.case_temperature_c)),
+                ),
+            ),
+        )
+        for x, y, title, color, rows in panels:
+            self._panel(canvas, x, y, width, height, title, color, rows)
 
     @staticmethod
-    def _metric_card(
+    def _panel(
         canvas: RGB565Canvas,
         x: int,
         y: int,
         width: int,
-        label: str,
-        value: float | None,
-        suffix: str,
-        maximum: float,
+        height: int,
+        title: str,
         color: RGB,
-        theme: Theme,
+        rows: tuple[tuple[str, str], ...],
     ) -> None:
-        height = 72
-        canvas.fill_rect(x, y, width, height, theme.surface)
-        canvas.stroke_rect(x, y, width, height, theme.grid)
-        canvas.draw_text(x + 8, y + 8, label, theme.text_muted)
-        rendered = "--" if value is None else f"{value:.0f}{suffix}"
-        canvas.draw_text(x + 8, y + 27, rendered, theme.text, scale=2)
-        normalized = 0.0 if value is None else max(0.0, min(1.0, value / maximum))
-        canvas.fill_rect(x + 8, y + 60, width - 16, 4, theme.surface_alt)
-        canvas.fill_rect(x + 8, y + 60, int((width - 16) * normalized), 4, color)
+        canvas.stroke_round_rect(x, y, width, height, color, radius=10, thickness=2)
+        title_width = canvas.text_width(title, 2)
+        canvas.draw_text(x + (width - title_width) // 2, y + 10, title, color, scale=2)
+        divider_y = y + 32
+        canvas.fill_rect(x + 12, divider_y, width - 24, 1, color)
+
+        row_top = divider_y + 14
+        row_gap = 22 if len(rows) <= 2 else 18
+        for index, (label, value) in enumerate(rows):
+            row_y = row_top + index * row_gap
+            canvas.draw_text(x + 14, row_y, f"{label}:", color, scale=2)
+            value_width = canvas.text_width(value, 2)
+            canvas.draw_text(x + width - 14 - value_width, row_y, value, color, scale=2)
 
     @staticmethod
-    def _details(canvas: RGB565Canvas, context: RenderContext, theme: Theme) -> None:
-        state = context.snapshot.state
-        system = state.system if state else None
-        network = state.network if state else None
-        gpus = system.gpus if system else ()
-        for index in range(2):
-            if index < len(gpus):
-                gpu = gpus[index]
-                usage = "--" if gpu.usage_percent is None else f"{gpu.usage_percent:.0f}%"
-                detail = f"GPU{index + 1} {usage} {gpu.name}"
-            else:
-                detail = f"GPU{index + 1} -- NOT AVAILABLE"
-            canvas.draw_text(
-                12,
-                135 + index * 15,
-                detail[:55],
-                theme.text if index == 0 else theme.text_muted,
-            )
-        if network is None:
-            network_text = "NETWORK --"
-        else:
-            down = network.download_bytes_per_second / 125_000.0
-            up = network.upload_bytes_per_second / 125_000.0
-            network_text = f"NETWORK DOWN {down:.1f}M  UP {up:.1f}M"
-        canvas.draw_text(12, 169, network_text[:55], theme.accent)
+    def _percent(value: float | None) -> str:
+        return "-- %" if value is None else f"{value:.0f} %"
 
     @staticmethod
-    def _visualizer(canvas: RGB565Canvas, bins: tuple[float, ...], theme: Theme) -> None:
-        left = 12
-        top = 190
-        width = canvas.width - 24
-        height = canvas.height - top - 12
-        canvas.fill_rect(left, top, width, height, theme.surface)
-        for fraction in (0.25, 0.5, 0.75):
-            y = top + int(height * fraction)
-            canvas.fill_rect(left, y, width, 1, theme.grid)
+    def _temp(value: float | None) -> str:
+        return "-- C" if value is None else f"{value:.0f} C"
 
-        bar_count = 32
-        gap = 3
-        bar_width = max(2, (width - gap * (bar_count + 1)) // bar_count)
-        usable_height = height - 12
-        for index in range(bar_count):
-            first = bins[index * 2] if index * 2 < len(bins) else 0.0
-            second = bins[index * 2 + 1] if index * 2 + 1 < len(bins) else first
-            level = max(first, second)
-            bar_height = max(2, int(level * usable_height))
-            x = left + gap + index * (bar_width + gap)
-            y = top + height - 6 - bar_height
-            color = theme.warning if level > 0.82 else theme.accent
-            canvas.fill_rect(x, y, bar_width, bar_height, color)
+    @staticmethod
+    def _rpm(value: float | None) -> str:
+        return "-- R" if value is None else f"{value:.0f} R"
+
+    @staticmethod
+    def _mb(value: float | None) -> str:
+        if value is None:
+            return "-- MB"
+        if value >= 10240:
+            return f"{value / 1024.0:.0f} GB"
+        return f"{value:.0f} MB"
