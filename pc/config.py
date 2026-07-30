@@ -23,6 +23,8 @@ class HostConfig:
     hardware_monitor_enabled: bool
     hardware_monitor_url: str
     hardware_monitor_timeout_seconds: float
+    media_collector_enabled: bool
+    media_interval_seconds: float
 
 
 def _table(value: object, name: str) -> dict[str, Any]:
@@ -99,6 +101,7 @@ def load_config(path: Path) -> HostConfig:
         collectors.get("librehardwaremonitor", {}),
         "collectors.librehardwaremonitor",
     )
+    media_collector = _table(collectors.get("media", {}), "collectors.media")
     port = server.get("port")
     if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
         raise ConfigError("server.port must be an integer from 1 to 65535")
@@ -168,6 +171,20 @@ def load_config(path: Path) -> HostConfig:
             "collectors.librehardwaremonitor",
             0.1,
             10.0,
+            default=1.0,
+        ),
+        media_collector_enabled=_boolean(
+            media_collector,
+            "enabled",
+            "collectors.media",
+            default=True,
+        ),
+        media_interval_seconds=_number(
+            media_collector,
+            "interval_seconds",
+            "collectors.media",
+            0.25,
+            60.0,
             default=1.0,
         ),
     )

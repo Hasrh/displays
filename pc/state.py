@@ -1,15 +1,17 @@
-"""Synthetic authoritative state used to verify the transport end to end."""
+"""Authoritative host state composition for synthetic and live collectors."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import math
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from time import monotonic
+from typing import Protocol
 
-from pc.collectors.system import SystemSample, WindowsSystemCollector
+from pc.collectors.system import SystemSample
 from shared.constants import FFT_BIN_COUNT
 from shared.models import (
     ClockState,
@@ -23,6 +25,14 @@ from shared.models import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class SystemCollector(Protocol):
+    def sample(self) -> SystemSample: ...
+
+
+class MediaCollector(Protocol):
+    async def sample(self) -> MediaState: ...
 
 
 class SyntheticStateSource:
@@ -95,45 +105,118 @@ class SyntheticStateSource:
 
 
 class HostStateSource(SyntheticStateSource):
-    """Combines real system telemetry with synthetic not-yet-implemented sources."""
+    """Overlays live collectors onto unfinished synthetic sources."""
 
-    def __init__(self, collector: WindowsSystemCollector, interval_seconds: float) -> None:
-        self._collector = collector
-        self._interval_seconds = interval_seconds
+    def __init__(
+        self,
+        *,
+        system_collector: SystemCollector | None = None,
+        system_interval_seconds: float = 1.0,
+        media_collector: MediaCollector | None = None,
+        media_interval_seconds: float = 1.0,
+    ) -> None:
+        self._system_collector = system_collector
+        self._system_interval_seconds = system_interval_seconds
+        self._media_collector = media_collector
+        self._media_interval_seconds = media_interval_seconds
         self._latest_system: SystemSample | None = None
-        self._collector_healthy: bool | None = None
+        self._latest_media: MediaState | None = None
+        self._system_healthy: bool | None = None
+        self._media_healthy: bool | None = None
 
     async def initialize(self) -> None:
-        await self._collect_once()
+        tasks: list[Awaitable[None]] = []
+        if self._system_collector is not None:
+            tasks.append(self._collect_system_once())
+        if self._media_collector is not None:
+            tasks.append(self._collect_media_once())
+        if tasks:
+            await asyncio.gather(*tasks)
 
     async def run(self) -> None:
-        next_sample = monotonic() + self._interval_seconds
-        while True:
-            await asyncio.sleep(max(0.0, next_sample - monotonic()))
-            await self._collect_once()
-            next_sample += self._interval_seconds
-            if next_sample < monotonic():
-                next_sample = monotonic() + self._interval_seconds
+        tasks: list[asyncio.Task[None]] = []
+        if self._system_collector is not None:
+            tasks.append(
+                asyncio.create_task(
+                    self._poll(
+                        self._collect_system_once,
+                        self._system_interval_seconds,
+                    ),
+                    name="windows-system-collector",
+                )
+            )
+        if self._media_collector is not None:
+            tasks.append(
+                asyncio.create_task(
+                    self._poll(
+                        self._collect_media_once,
+                        self._media_interval_seconds,
+                    ),
+                    name="windows-media-collector",
+                )
+            )
+        if not tasks:
+            await asyncio.Event().wait()
+            return
+        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        for task in done:
+            task.result()
 
     def state_at(self, elapsed_seconds: float) -> DisplayState:
         state = super().state_at(elapsed_seconds)
-        if self._latest_system is None:
-            return replace(state, system=None, network=None)
-        return replace(
-            state,
-            system=self._latest_system.system,
-            network=self._latest_system.network,
-        )
+        if self._system_collector is not None:
+            if self._latest_system is None:
+                state = replace(state, system=None, network=None)
+            else:
+                state = replace(
+                    state,
+                    system=self._latest_system.system,
+                    network=self._latest_system.network,
+                )
+        if self._media_collector is not None:
+            state = replace(state, media=self._latest_media)
+        return state
 
-    async def _collect_once(self) -> None:
+    async def _poll(
+        self,
+        collect: Callable[[], Awaitable[None]],
+        interval_seconds: float,
+    ) -> None:
+        next_sample = monotonic() + interval_seconds
+        while True:
+            await asyncio.sleep(max(0.0, next_sample - monotonic()))
+            await collect()
+            next_sample += interval_seconds
+            if next_sample < monotonic():
+                next_sample = monotonic() + interval_seconds
+
+    async def _collect_system_once(self) -> None:
+        assert self._system_collector is not None
         try:
-            sample = await asyncio.to_thread(self._collector.sample)
+            sample = await asyncio.to_thread(self._system_collector.sample)
         except Exception:
-            if self._collector_healthy is not False:
+            if self._system_healthy is not False:
                 LOGGER.exception("Windows system telemetry collection failed")
-            self._collector_healthy = False
+            self._system_healthy = False
             return
-        if self._collector_healthy is not True:
+        if self._system_healthy is not True:
             LOGGER.info("Windows system telemetry collector is active")
-        self._collector_healthy = True
+        self._system_healthy = True
         self._latest_system = sample
+
+    async def _collect_media_once(self) -> None:
+        assert self._media_collector is not None
+        try:
+            sample = await self._media_collector.sample()
+        except Exception:
+            if self._media_healthy is not False:
+                LOGGER.exception("Windows media session collection failed")
+            self._media_healthy = False
+            return
+        if self._media_healthy is not True:
+            LOGGER.info("Windows media session collector is active")
+        self._media_healthy = True
+        self._latest_media = sample

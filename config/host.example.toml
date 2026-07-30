@@ -21,4 +21,9 @@ enabled = true
 url = "http://127.0.0.1:8085/data.json"
 timeout_seconds = 1.0
 
+[collectors.media]
+# Reads the active Windows Global System Media Transport Controls session.
+enabled = true
+interval_seconds = 1.0
+
 # The token itself comes from the named environment variable; never commit it.

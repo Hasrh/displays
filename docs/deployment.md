@@ -22,8 +22,8 @@ $env:DESKTOP_DISPLAY_TOKEN = "replace-with-a-long-random-secret"
 python -m pc.main --config config/host.toml
 ```
 
-The host binds only the configured Wi-Fi address. CPU, RAM, and network metrics come from
-Windows; media, FFT, and weather are still synthetic. Permit inbound TCP 8765 on the Windows
+The host binds only the configured Wi-Fi address. CPU, RAM, network, and media-session metrics
+come from Windows; FFT and weather are still synthetic. Permit inbound TCP 8765 on the Windows
 Private firewall profile.
 
 ```powershell
@@ -59,6 +59,22 @@ timeout_seconds = 1.0
 LibreHardwareMonitor is optional. If it is stopped, GPU cards show unavailable while CPU, RAM,
 network, WebSocket, and rendering continue. Set its `enabled` option to `false` to suppress
 connection attempts.
+
+### Enable media-session telemetry
+
+The host reads the active Windows Global System Media Transport Controls session. Start
+playback in Spotify, Edge, VLC, Windows Media Player, or another GSMTC-compatible app, then
+keep media collection enabled in `config/host.toml`:
+
+```toml
+[collectors.media]
+enabled = true
+interval_seconds = 1.0
+```
+
+When no session is active the display shows an empty idle media state rather than synthetic
+track data. Volume is not exposed by GSMTC and remains unset. Playback command execution from
+the Pi is still deferred.
 
 ## Raspberry Pi probe
 

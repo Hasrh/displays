@@ -18,6 +18,11 @@ dependencies = [
 [project.optional-dependencies]
 host = [
   "psutil>=7.2.2,<8",
+  "winrt-Windows.Foundation>=3.2.1,<4",
+  "winrt-Windows.Foundation.Collections>=3.2.1,<4",
+  "winrt-Windows.Media>=3.2.1,<4",
+  "winrt-Windows.Media.Control>=3.2.1,<4",
+  "winrt-runtime>=3.2.1,<4",
 ]
 dev = [
   "mypy>=1.10",

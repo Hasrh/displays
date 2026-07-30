@@ -14,6 +14,7 @@ import pytest
         "shared.protocol",
         "pc",
         "pc.collectors",
+        "pc.collectors.media",
         "pc.collectors.system",
         "pc.config",
         "pc.main",
