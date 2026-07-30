@@ -13,6 +13,7 @@ from pc.collectors.media import (
     datetime_from_winrt,
     interpolate_position,
     media_state_from_snapshot,
+    playback_is_active,
     timedelta_to_seconds,
 )
 from pc.collectors.system import SystemSample
@@ -121,6 +122,13 @@ def test_host_state_source_overlays_media_and_system() -> None:
     assert state.system == system.system
     assert state.network == system.network
     assert state.media == media
+
+
+def test_playback_is_active_uses_gsmtc_status_names() -> None:
+    assert playback_is_active(SimpleNamespace(name="PLAYING")) is True
+    assert playback_is_active(SimpleNamespace(name="CHANGING")) is True
+    assert playback_is_active(SimpleNamespace(name="PAUSED")) is False
+    assert playback_is_active(SimpleNamespace(name="STOPPED")) is False
 
 
 def test_timedelta_helpers_accept_winrt_shaped_values() -> None:

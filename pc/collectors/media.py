@@ -13,20 +13,22 @@ from shared.models import MediaState
 
 LOGGER = logging.getLogger(__name__)
 
-WinRTMediaPlaybackStatus: Any
+WinRTPlaybackStatus: Any
 WinRTSessionManager: Any
 WinRTBuffer: Any
 WinRTInputStreamOptions: Any
 
 try:
-    from winrt.windows.media import MediaPlaybackStatus as WinRTMediaPlaybackStatus
     from winrt.windows.media.control import (
         GlobalSystemMediaTransportControlsSessionManager as WinRTSessionManager,
+    )
+    from winrt.windows.media.control import (
+        GlobalSystemMediaTransportControlsSessionPlaybackStatus as WinRTPlaybackStatus,
     )
     from winrt.windows.storage.streams import Buffer as WinRTBuffer
     from winrt.windows.storage.streams import InputStreamOptions as WinRTInputStreamOptions
 except ImportError:  # pragma: no cover - exercised on hosts without the optional extra
-    WinRTMediaPlaybackStatus = None
+    WinRTPlaybackStatus = None
     WinRTSessionManager = None
     WinRTBuffer = None
     WinRTInputStreamOptions = None
@@ -152,9 +154,18 @@ def media_state_from_snapshot(
 
 
 def playback_is_active(status: object) -> bool:
-    if WinRTMediaPlaybackStatus is None:
+    """Return True for GSMTC playing (and track-changing) sessions.
+
+    GSMTC uses GlobalSystemMediaTransportControlsSessionPlaybackStatus, whose
+    PLAYING value (4) differs from windows.media.MediaPlaybackStatus.PLAYING (3).
+    """
+
+    name = getattr(status, "name", None)
+    if isinstance(name, str):
+        return name.upper() in {"PLAYING", "CHANGING"}
+    if WinRTPlaybackStatus is None:
         return False
-    return bool(status == WinRTMediaPlaybackStatus.PLAYING)
+    return status in {WinRTPlaybackStatus.PLAYING, WinRTPlaybackStatus.CHANGING}
 
 
 async def read_thumbnail_bytes(thumbnail: object) -> bytes | None:
