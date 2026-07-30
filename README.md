@@ -9,8 +9,8 @@ stream are implemented. A live RGB565 system/FFT dashboard now renders that stat
 verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages share a
 configurable navigation manager. Windows CPU, RAM, network telemetry, and Global System Media
 Transport Controls metadata are live, with per-GPU telemetry from an optional local
-LibreHardwareMonitor endpoint. FFT remains synthetic. Weather development is paused; touch input
-and playback command execution are reserved for the final milestone.
+LibreHardwareMonitor endpoint. Live WASAPI loopback FFT drives the visualizer when available.
+Weather, touch navigation, and playback command execution are paused.
 
 ## Requirements
 
@@ -44,9 +44,9 @@ outside source control (preferably through environment variables).
 ## Entry points
 
 `python -m pc.main --config config/host.toml` starts the authenticated WebSocket host with
-real Windows system and media telemetry plus synthetic sources for unfinished integrations. The
-Pi entry point offers `--network-test`, `--display-test`, and `--run-display`; without a mode it
-validates configuration without touching hardware.
+real Windows system, media, and WASAPI loopback FFT telemetry plus synthetic fallbacks for
+unfinished integrations. The Pi entry point offers `--network-test`, `--display-test`, and
+`--run-display`; without a mode it validates configuration without touching hardware.
 
 The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480×320 RGB565,
 and `dtoverlay=tft35a:rotate=90`. Touch is intentionally disabled. See `docs/hardware.md`

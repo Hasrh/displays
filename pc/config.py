@@ -25,6 +25,8 @@ class HostConfig:
     hardware_monitor_timeout_seconds: float
     media_collector_enabled: bool
     media_interval_seconds: float
+    fft_collector_enabled: bool
+    fft_size: int
 
 
 def _table(value: object, name: str) -> dict[str, Any]:
@@ -102,6 +104,7 @@ def load_config(path: Path) -> HostConfig:
         "collectors.librehardwaremonitor",
     )
     media_collector = _table(collectors.get("media", {}), "collectors.media")
+    fft_collector = _table(collectors.get("fft", {}), "collectors.fft")
     port = server.get("port")
     if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
         raise ConfigError("server.port must be an integer from 1 to 65535")
@@ -186,5 +189,19 @@ def load_config(path: Path) -> HostConfig:
             0.25,
             60.0,
             default=1.0,
+        ),
+        fft_collector_enabled=_boolean(
+            fft_collector,
+            "enabled",
+            "collectors.fft",
+            default=True,
+        ),
+        fft_size=_integer(
+            fft_collector,
+            "fft_size",
+            "collectors.fft",
+            256,
+            16384,
+            default=2048,
         ),
     )

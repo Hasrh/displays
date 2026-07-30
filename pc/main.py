@@ -7,6 +7,7 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
+from pc.audio import WasapiLoopbackFftCollector
 from pc.collectors import (
     LibreHardwareMonitorClient,
     WindowsMediaSessionCollector,
@@ -24,6 +25,7 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
     collector_task: asyncio.Task[None] | None = None
     system_collector = None
     media_collector = None
+    fft_collector = None
 
     if config.system_collector_enabled:
         hardware_monitor = (
@@ -46,7 +48,15 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
     else:
         LOGGER.warning("Windows media collector is disabled; using synthetic media metadata")
 
-    if system_collector is None and media_collector is None:
+    if config.fft_collector_enabled:
+        try:
+            fft_collector = WasapiLoopbackFftCollector(fft_size=config.fft_size)
+        except RuntimeError as exc:
+            LOGGER.warning("%s; using synthetic FFT frames", exc)
+    else:
+        LOGGER.warning("WASAPI loopback FFT is disabled; using synthetic FFT frames")
+
+    if system_collector is None and media_collector is None and fft_collector is None:
         source = SyntheticStateSource()
     else:
         live_source = HostStateSource(
@@ -54,6 +64,7 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
             system_interval_seconds=config.system_interval_seconds,
             media_collector=media_collector,
             media_interval_seconds=config.media_interval_seconds,
+            fft_collector=fft_collector,
         )
         await live_source.initialize()
         collector_task = asyncio.create_task(live_source.run(), name="host-collectors")
@@ -65,6 +76,8 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
         if collector_task is not None:
             collector_task.cancel()
             await asyncio.gather(collector_task, return_exceptions=True)
+        elif fft_collector is not None:
+            fft_collector.stop()
 
 
 def build_parser() -> argparse.ArgumentParser:

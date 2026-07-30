@@ -35,6 +35,14 @@ class MediaCollector(Protocol):
     async def sample(self) -> MediaState: ...
 
 
+class FftCollector(Protocol):
+    def start(self) -> None: ...
+
+    def stop(self) -> None: ...
+
+    def latest(self, captured_at: str | None = None) -> FFTFrame | None: ...
+
+
 class SyntheticStateSource:
     """Deterministic source that exercises every high-frequency transport path."""
 
@@ -114,17 +122,21 @@ class HostStateSource(SyntheticStateSource):
         system_interval_seconds: float = 1.0,
         media_collector: MediaCollector | None = None,
         media_interval_seconds: float = 1.0,
+        fft_collector: FftCollector | None = None,
     ) -> None:
         self._system_collector = system_collector
         self._system_interval_seconds = system_interval_seconds
         self._media_collector = media_collector
         self._media_interval_seconds = media_interval_seconds
+        self._fft_collector = fft_collector
         self._latest_system: SystemSample | None = None
         self._latest_media: MediaState | None = None
         self._system_healthy: bool | None = None
         self._media_healthy: bool | None = None
 
     async def initialize(self) -> None:
+        if self._fft_collector is not None:
+            self._fft_collector.start()
         tasks: list[Awaitable[None]] = []
         if self._system_collector is not None:
             tasks.append(self._collect_system_once())
@@ -155,15 +167,19 @@ class HostStateSource(SyntheticStateSource):
                     name="windows-media-collector",
                 )
             )
-        if not tasks:
-            await asyncio.Event().wait()
-            return
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        for task in done:
-            task.result()
+        try:
+            if not tasks:
+                await asyncio.Event().wait()
+                return
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            for task in done:
+                task.result()
+        finally:
+            if self._fft_collector is not None:
+                self._fft_collector.stop()
 
     def state_at(self, elapsed_seconds: float) -> DisplayState:
         state = super().state_at(elapsed_seconds)
@@ -179,6 +195,13 @@ class HostStateSource(SyntheticStateSource):
         if self._media_collector is not None:
             state = replace(state, media=self._latest_media)
         return state
+
+    def fft_at(self, elapsed_seconds: float, captured_at: str) -> FFTFrame:
+        if self._fft_collector is not None:
+            frame = self._fft_collector.latest(captured_at)
+            if frame is not None:
+                return frame
+        return super().fft_at(elapsed_seconds, captured_at)
 
     async def _poll(
         self,

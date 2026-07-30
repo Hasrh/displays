@@ -24,6 +24,8 @@ def test_host_example_parses() -> None:
     assert config.hardware_monitor_url == "http://127.0.0.1:8085/data.json"
     assert config.media_collector_enabled is True
     assert config.media_interval_seconds == 1.0
+    assert config.fft_collector_enabled is True
+    assert config.fft_size == 2048
 
 
 def test_pi_example_parses() -> None:

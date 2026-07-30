@@ -26,4 +26,9 @@ timeout_seconds = 1.0
 enabled = true
 interval_seconds = 1.0
 
+[collectors.fft]
+# Captures default speaker output through WASAPI loopback and streams 64 FFT bins.
+enabled = true
+fft_size = 2048
+
 # The token itself comes from the named environment variable; never commit it.

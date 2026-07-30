@@ -74,7 +74,28 @@ interval_seconds = 1.0
 
 When no session is active the display shows an empty idle media state rather than synthetic
 track data. Volume is not exposed by GSMTC and remains unset. Playback command execution from
-the Pi is still deferred.
+the Pi is paused.
+
+### Enable WASAPI loopback FFT
+
+The host captures the default Windows speaker output through WASAPI loopback and streams 64
+normalized FFT bins to the Pi visualizer. Keep FFT collection enabled in `config/host.toml`:
+
+```toml
+[collectors.fft]
+enabled = true
+fft_size = 2048
+```
+
+Play audio on the Windows host. The first WASAPI loopback buffer can take a few seconds to
+arrive; after that, frames update continuously. Expected log:
+
+```text
+WASAPI loopback FFT active device=...
+```
+
+If loopback capture fails, the host keeps streaming and falls back to synthetic FFT frames.
+Weather, touch navigation, and playback commands remain paused.
 
 ## Raspberry Pi probe
 
