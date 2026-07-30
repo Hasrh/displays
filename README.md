@@ -7,10 +7,10 @@ shared protocol contracts, a read-only Raspberry Pi hardware probe, and an RGB56
 backend for hardware testing. The authenticated WebSocket host/client and synthetic transport
 stream are implemented. A live RGB565 system/FFT dashboard now renders that state on the
 verified framebuffer. Now Playing, Visualizer, System, and Clock/Weather pages share a
-configurable navigation manager. Windows CPU, RAM, and network telemetry is live, with
-per-GPU telemetry from an optional local LibreHardwareMonitor endpoint. Media, FFT, and weather
-remain synthetic. Weather development is paused; touch input and playback command execution
-are reserved for the final milestone.
+configurable navigation manager. Windows CPU, RAM, network telemetry, and Global System Media
+Transport Controls metadata are live, with per-GPU telemetry from an optional local
+LibreHardwareMonitor endpoint. FFT remains synthetic. Weather development is paused; touch input
+and playback command execution are reserved for the final milestone.
 
 ## Requirements
 
@@ -44,8 +44,8 @@ outside source control (preferably through environment variables).
 ## Entry points
 
 `python -m pc.main --config config/host.toml` starts the authenticated WebSocket host with
-real Windows system telemetry and synthetic sources for unfinished integrations. The Pi entry
-point offers `--network-test`, `--display-test`, and `--run-display`; without a mode it
+real Windows system and media telemetry plus synthetic sources for unfinished integrations. The
+Pi entry point offers `--network-test`, `--display-test`, and `--run-display`; without a mode it
 validates configuration without touching hardware.
 
 The verified LCD path is an LCDWiki MPI3501 using `fb_ili9486`, `/dev/fb1`, 480×320 RGB565,

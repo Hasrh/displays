@@ -122,13 +122,14 @@ def test_host_state_source_overlays_real_system_data() -> None:
         ),
     )
     collector = SimpleNamespace(sample=lambda: expected)
-    source = HostStateSource(collector, interval_seconds=1.0)
+    source = HostStateSource(system_collector=collector, system_interval_seconds=1.0)
     asyncio.run(source.initialize())
 
     state = source.state_at(5.0)
     assert state.system == expected.system
     assert state.network == expected.network
     assert state.media is not None
+    assert state.media.title == "Desktop Display Network Test"
 
 
 def test_collector_retains_last_gpu_sample_during_outage(monkeypatch: object) -> None:

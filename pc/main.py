@@ -7,7 +7,11 @@ import os
 from collections.abc import Sequence
 from pathlib import Path
 
-from pc.collectors import LibreHardwareMonitorClient, WindowsSystemCollector
+from pc.collectors import (
+    LibreHardwareMonitorClient,
+    WindowsMediaSessionCollector,
+    WindowsSystemCollector,
+)
 from pc.config import ConfigError, HostConfig, load_config
 from pc.network import StateSource, WebSocketHost
 from pc.state import HostStateSource, SyntheticStateSource
@@ -18,6 +22,9 @@ LOGGER = logging.getLogger(__name__)
 async def run_application(config: HostConfig, auth_token: str) -> None:
     source: StateSource
     collector_task: asyncio.Task[None] | None = None
+    system_collector = None
+    media_collector = None
+
     if config.system_collector_enabled:
         hardware_monitor = (
             LibreHardwareMonitorClient(
@@ -27,19 +34,30 @@ async def run_application(config: HostConfig, auth_token: str) -> None:
             if config.hardware_monitor_enabled
             else None
         )
-        live_source = HostStateSource(
-            WindowsSystemCollector(hardware_monitor),
-            config.system_interval_seconds,
-        )
-        await live_source.initialize()
-        collector_task = asyncio.create_task(
-            live_source.run(),
-            name="windows-system-collector",
-        )
-        source = live_source
+        system_collector = WindowsSystemCollector(hardware_monitor)
     else:
         LOGGER.warning("Windows system collector is disabled; using synthetic telemetry")
+
+    if config.media_collector_enabled:
+        try:
+            media_collector = WindowsMediaSessionCollector()
+        except RuntimeError as exc:
+            LOGGER.warning("%s; using synthetic media metadata", exc)
+    else:
+        LOGGER.warning("Windows media collector is disabled; using synthetic media metadata")
+
+    if system_collector is None and media_collector is None:
         source = SyntheticStateSource()
+    else:
+        live_source = HostStateSource(
+            system_collector=system_collector,
+            system_interval_seconds=config.system_interval_seconds,
+            media_collector=media_collector,
+            media_interval_seconds=config.media_interval_seconds,
+        )
+        await live_source.initialize()
+        collector_task = asyncio.create_task(live_source.run(), name="host-collectors")
+        source = live_source
 
     try:
         await WebSocketHost(config, auth_token, state_source=source).run()
